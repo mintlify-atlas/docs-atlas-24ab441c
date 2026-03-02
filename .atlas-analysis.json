@@ -1,0 +1,186 @@
+{
+  "projectType": "saas",
+  "projectName": "JOIP Web Application",
+  "projectDescription": "A full-stack NSFW web application for creating multimedia slideshows with AI-generated captions and advanced content tools.",
+  "theme": "palm",
+  "primaryColor": "#9333ea",
+  "lightColor": "#a855f7",
+  "darkColor": "#7e22ce",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation",
+              "environment-setup"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/sessions",
+              "features/smart-captions",
+              "features/babecock-studio",
+              "features/media-vault",
+              "features/community"
+            ]
+          },
+          {
+            "group": "Content Tools",
+            "pages": [
+              "tools/gaslighter",
+              "tools/scroller",
+              "tools/ai-undress",
+              "tools/beta-censor"
+            ]
+          },
+          {
+            "group": "User Management",
+            "pages": [
+              "user/authentication",
+              "user/credits-system",
+              "user/referrals",
+              "user/profile"
+            ]
+          },
+          {
+            "group": "Administration",
+            "pages": [
+              "admin/overview",
+              "admin/user-management",
+              "admin/analytics",
+              "admin/telegram-bot"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/introduction",
+              "api/authentication",
+              "api/rate-limiting",
+              "api/errors"
+            ]
+          },
+          {
+            "group": "Sessions",
+            "pages": [
+              "api/sessions/list",
+              "api/sessions/create",
+              "api/sessions/get",
+              "api/sessions/update",
+              "api/sessions/delete",
+              "api/sessions/share"
+            ]
+          },
+          {
+            "group": "Media",
+            "pages": [
+              "api/media/upload",
+              "api/media/list",
+              "api/media/delete",
+              "api/media/share"
+            ]
+          },
+          {
+            "group": "AI Services",
+            "pages": [
+              "api/ai/generate-caption",
+              "api/ai/smart-captions",
+              "api/ai/undress"
+            ]
+          },
+          {
+            "group": "Community",
+            "pages": [
+              "api/community/feed",
+              "api/community/save-session"
+            ]
+          },
+          {
+            "group": "Reddit Integration",
+            "pages": [
+              "api/reddit/fetch",
+              "api/reddit/validate",
+              "api/reddit/search"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Deployment",
+            "pages": [
+              "guides/deployment/replit",
+              "guides/deployment/environment-variables",
+              "guides/deployment/database-setup",
+              "guides/deployment/storage-configuration"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "guides/development/local-setup",
+              "guides/development/project-structure",
+              "guides/development/database-migrations",
+              "guides/development/testing"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "guides/integrations/reddit-api",
+              "guides/integrations/openai",
+              "guides/integrations/supabase",
+              "guides/integrations/telegram"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Session Management with AI-generated captions",
+    "Smart Captions for image captioning",
+    "Babecock Studio for image combinations",
+    "Media Vault for file management",
+    "Community sharing and discovery",
+    "Gaslighter Reddit browser",
+    "Scroller custom feed viewer",
+    "AI Undress image transformation",
+    "Credits and referral system",
+    "Admin panel and analytics"
+  ],
+  "publicApiSurface": [
+    "GET /api/sessions - List user sessions",
+    "POST /api/sessions - Create new session",
+    "GET /api/sessions/:id - Get session details",
+    "PATCH /api/sessions/:id - Update session",
+    "DELETE /api/sessions/:id - Delete session",
+    "POST /api/sessions/:id/share - Share session",
+    "POST /api/sessions/manual - Create manual session",
+    "POST /api/sessions/import-joip - Import from Imgchest",
+    "GET /api/community - Community feed",
+    "POST /api/community/sessions/:id/save - Save community session",
+    "POST /api/media/upload - Upload media",
+    "POST /api/generate-caption - Generate AI caption",
+    "POST /api/manual/generate-ai-caption - Generate contextual caption",
+    "POST /api/fetch-reddit - Fetch Reddit content",
+    "POST /api/babecock/upload-babe - Upload babe image",
+    "POST /api/babecock/upload-cock - Upload cock image",
+    "POST /api/babecock/generate - Generate combination",
+    "GET /api/admin/users - Admin user management",
+    "GET /api/admin/analytics - Usage analytics"
+  ]
+}
