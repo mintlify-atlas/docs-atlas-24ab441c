@@ -119,6 +119,20 @@
             ]
           },
           {
+            "group": "Credits",
+            "pages": [
+              "api/credits/balance",
+              "api/credits/packages",
+              "api/credits/transactions"
+            ]
+          },
+          {
+            "group": "Babecock",
+            "pages": [
+              "api/babecock/generate"
+            ]
+          },
+          {
             "group": "Reddit Integration",
             "pages": [
               "api/reddit/fetch",

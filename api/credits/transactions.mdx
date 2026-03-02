@@ -1,0 +1,168 @@
+---
+title: Get credit transactions
+description: Retrieve the user's credit transaction history
+api: GET /api/credits/transactions
+---
+
+Returns a paginated list of all credit transactions for the authenticated user, including purchases, spending, referrals, and bonuses.
+
+## Request
+
+<ParamField query="page" type="integer" default="1">
+  Page number for pagination
+</ParamField>
+
+<ParamField query="limit" type="integer" default="50">
+  Number of transactions per page (max 100)
+</ParamField>
+
+<ParamField query="type" type="string">
+  Filter by transaction type: `purchase`, `spend`, `referral`, `bonus`, `refund`, `grant`
+</ParamField>
+
+## Response
+
+<ResponseField name="transactions" type="array" required>
+  Array of transaction objects
+  
+  <Expandable title="transaction properties">
+    <ResponseField name="id" type="integer" required>
+      Transaction ID
+    </ResponseField>
+    
+    <ResponseField name="userId" type="string" required>
+      User ID
+    </ResponseField>
+    
+    <ResponseField name="amount" type="integer" required>
+      Credit amount (positive for credit, negative for debit)
+    </ResponseField>
+    
+    <ResponseField name="type" type="string" required>
+      Transaction type: `purchase`, `spend`, `referral`, `bonus`, `refund`, `grant`
+    </ResponseField>
+    
+    <ResponseField name="description" type="string" required>
+      Human-readable transaction description
+    </ResponseField>
+    
+    <ResponseField name="featureKey" type="string">
+      Feature key for spend transactions (e.g., "smart_caption", "ai_undress")
+    </ResponseField>
+    
+    <ResponseField name="metadata" type="object">
+      Additional transaction metadata (payment ID, referral code, etc.)
+    </ResponseField>
+    
+    <ResponseField name="balanceAfter" type="integer" required>
+      User's credit balance after this transaction
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string" required>
+      ISO timestamp of transaction
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="pagination" type="object" required>
+  Pagination metadata
+  
+  <Expandable title="pagination properties">
+    <ResponseField name="page" type="integer" required>
+      Current page
+    </ResponseField>
+    
+    <ResponseField name="limit" type="integer" required>
+      Items per page
+    </ResponseField>
+    
+    <ResponseField name="total" type="integer" required>
+      Total number of transactions
+    </ResponseField>
+    
+    <ResponseField name="pages" type="integer" required>
+      Total number of pages
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example Request
+
+```bash
+curl "https://your-domain.com/api/credits/transactions?page=1&limit=10&type=spend" \
+  -H "Cookie: connect.sid=your-session-cookie"
+```
+
+## Example Response
+
+```json
+{
+  "transactions": [
+    {
+      "id": 1234,
+      "userId": "user-abc-123",
+      "amount": -25,
+      "type": "spend",
+      "description": "AI Undress - High Quality",
+      "featureKey": "ai_undress_high",
+      "metadata": {
+        "imageId": "img-789"
+      },
+      "balanceAfter": 175,
+      "createdAt": "2026-03-02T14:30:00.000Z"
+    },
+    {
+      "id": 1233,
+      "userId": "user-abc-123",
+      "amount": 100,
+      "type": "purchase",
+      "description": "Credit Package Purchase",
+      "featureKey": null,
+      "metadata": {
+        "paymentId": "pay-xyz-456",
+        "packageId": 1
+      },
+      "balanceAfter": 200,
+      "createdAt": "2026-03-02T10:15:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 45,
+    "pages": 5
+  }
+}
+```
+
+## Response Codes
+
+| Code | Description |
+|------|-------------|
+| 200  | Success - Returns transaction history |
+| 401  | Unauthorized - User not authenticated |
+| 400  | Bad Request - Invalid pagination or type filter |
+| 500  | Server error |
+
+## Transaction Types
+
+| Type | Description |
+|------|-------------|
+| `purchase` | Credits purchased with real money |
+| `spend` | Credits spent on features |
+| `referral` | Credits earned from referrals |
+| `bonus` | Bonus credits (daily bonus, promotions) |
+| `refund` | Credits refunded (failed operations) |
+| `grant` | Admin-granted credits |
+
+## Notes
+
+- Transactions are ordered by `createdAt` descending (newest first)
+- Negative amounts indicate debits, positive indicate credits
+- `balanceAfter` shows the running balance at transaction time
+- Metadata varies by transaction type
+
+## Related Endpoints
+
+- [Get Balance](/api/credits/balance) - Check current balance
+- [Get Pricing](/api/credits/pricing) - View feature pricing

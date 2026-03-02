@@ -1,0 +1,108 @@
+---
+title: Get credit packages
+description: Retrieve available credit packages for purchase
+api: GET /api/credits/packages
+---
+
+Returns all available credit packages that users can purchase, including pricing and credit amounts.
+
+## Response
+
+Returns an array of package objects:
+
+<ResponseField name="id" type="integer" required>
+  Package ID
+</ResponseField>
+
+<ResponseField name="credits" type="integer" required>
+  Number of credits included
+</ResponseField>
+
+<ResponseField name="price" type="number" required>
+  Price in USD
+</ResponseField>
+
+<ResponseField name="displayName" type="string" required>
+  Package display name (e.g., "Starter Pack", "Power User Pack")
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Package description and value proposition
+</ResponseField>
+
+<ResponseField name="bonusCredits" type="integer" default="0">
+  Bonus credits for this package
+</ResponseField>
+
+<ResponseField name="popular" type="boolean" default="false">
+  Whether this package is marked as most popular
+</ResponseField>
+
+<ResponseField name="isActive" type="boolean" required>
+  Whether package is currently available for purchase
+</ResponseField>
+
+## Example Request
+
+```bash
+curl https://your-domain.com/api/credits/packages \
+  -H "Cookie: connect.sid=your-session-cookie"
+```
+
+## Example Response
+
+```json
+[
+  {
+    "id": 1,
+    "credits": 100,
+    "price": 9.99,
+    "displayName": "Starter Pack",
+    "description": "Perfect for trying out premium features",
+    "bonusCredits": 0,
+    "popular": false,
+    "isActive": true
+  },
+  {
+    "id": 2,
+    "credits": 500,
+    "price": 39.99,
+    "displayName": "Power User Pack",
+    "description": "Best value - includes 25% bonus credits",
+    "bonusCredits": 125,
+    "popular": true,
+    "isActive": true
+  },
+  {
+    "id": 3,
+    "credits": 1000,
+    "price": 69.99,
+    "displayName": "Ultimate Pack",
+    "description": "Maximum credits for serious users",
+    "bonusCredits": 300,
+    "popular": false,
+    "isActive": true
+  }
+]
+```
+
+## Response Codes
+
+| Code | Description |
+|------|-------------|
+| 200  | Success - Returns available packages |
+| 401  | Unauthorized - User not authenticated |
+| 500  | Server error |
+
+## Notes
+
+- Only active packages are returned
+- Packages are ordered by credit amount (ascending)
+- Popular packages are highlighted in the UI
+- Bonus credits are automatically added to the purchase
+
+## Related Endpoints
+
+- [Create Payment](/api/payments/create) - Purchase credits
+- [Get Balance](/api/credits/balance) - Check current balance
+- [Get Tiers](/api/credits/tiers) - View subscription tiers

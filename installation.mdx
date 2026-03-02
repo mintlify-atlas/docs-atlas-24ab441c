@@ -644,14 +644,14 @@ npm start
 Verify your installation with these endpoints:
 
 ```bash
-# Basic health check (TODO: implement)
-curl http://localhost:5000/health
+# Basic health check
+curl http://localhost:5000/api/health
 
 # Storage diagnostics
 curl http://localhost:5000/api/storage/status
 
-# Database connection (via user endpoint)
-curl http://localhost:5000/api/auth/user
+# Database connection health
+curl http://localhost:5000/api/health/database
 ```
 
 ## Performance Optimization

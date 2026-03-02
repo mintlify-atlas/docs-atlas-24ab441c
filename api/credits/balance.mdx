@@ -1,0 +1,93 @@
+---
+title: Get credit balance
+description: Retrieve the current user's credit balance and tier information
+api: GET /api/credits/balance
+---
+
+Returns the authenticated user's current credit balance, monthly tier allocation, and tier details.
+
+## Request
+
+<ParamField query="includeStats" type="boolean" default="false">
+  Include additional statistics (total earned, spent, etc.)
+</ParamField>
+
+## Response
+
+<ResponseField name="balance" type="integer" required>
+  Current available credits
+</ResponseField>
+
+<ResponseField name="tier" type="string" required>
+  Current tier key (e.g., "free", "joi-curious", "full-access", "vip")
+</ResponseField>
+
+<ResponseField name="tierDisplayName" type="string" required>
+  Human-readable tier name
+</ResponseField>
+
+<ResponseField name="monthlyAllocation" type="integer" required>
+  Credits allocated monthly for this tier
+</ResponseField>
+
+<ResponseField name="nextRefreshDate" type="string">
+  ISO timestamp of next monthly credit refresh
+</ResponseField>
+
+<ResponseField name="stats" type="object">
+  Additional statistics (only if `includeStats=true`)
+  
+  <Expandable title="stats properties">
+    <ResponseField name="totalEarned" type="integer">
+      Total credits earned (purchases + referrals)
+    </ResponseField>
+    
+    <ResponseField name="totalSpent" type="integer">
+      Total credits spent on features
+    </ResponseField>
+    
+    <ResponseField name="lifetimeBalance" type="integer">
+      All-time credit total
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example Request
+
+```bash
+curl https://your-domain.com/api/credits/balance \
+  -H "Cookie: connect.sid=your-session-cookie"
+```
+
+## Example Response
+
+```json
+{
+  "balance": 127,
+  "tier": "joi-curious",
+  "tierDisplayName": "JOI-Curious",
+  "monthlyAllocation": 1000,
+  "nextRefreshDate": "2026-04-01T00:00:00.000Z"
+}
+```
+
+## Response Codes
+
+| Code | Description |
+|------|-------------|
+| 200  | Success - Returns credit balance |
+| 401  | Unauthorized - User not authenticated |
+| 500  | Server error |
+
+## Notes
+
+- Balance is checked before any credit-consuming operation
+- Monthly allocations reset on the 1st of each month
+- Free tier users receive 50 credits per month
+- Premium tiers receive larger monthly allocations (1,000 - 5,000)
+
+## Related Endpoints
+
+- [Check Feature Cost](/api/credits/check) - Check if user can afford a feature
+- [Get Transactions](/api/credits/transactions) - View credit transaction history
+- [Get Packages](/api/credits/packages) - View available credit packages for purchase

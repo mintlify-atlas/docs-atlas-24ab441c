@@ -1,0 +1,127 @@
+---
+title: Generate babecock
+description: Create a babecock image by combining babe and cock images
+api: POST /api/babecock/generate
+---
+
+Generates a babecock (split-screen combination) by pairing a "babe" image with a "cock" image. The server automatically determines the optimal layout (side-by-side or top-bottom) based on aspect ratios.
+
+## Request
+
+<ParamField body="babeImageUrl" type="string" required>
+  URL or data URI of the babe image
+</ParamField>
+
+<ParamField body="cockImageUrl" type="string" required>
+  URL or data URI of the cock image
+</ParamField>
+
+<ParamField body="layout" type="string" default="auto">
+  Layout mode: `auto`, `side-by-side`, `top-bottom`
+</ParamField>
+
+<ParamField body="saveToVault" type="boolean" default="false">
+  Whether to save the result to Media Vault
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  Whether generation succeeded
+</ResponseField>
+
+<ResponseField name="imageUrl" type="string" required>
+  URL of the generated babecock image
+</ResponseField>
+
+<ResponseField name="layout" type="string" required>
+  Layout used: `side-by-side` or `top-bottom`
+</ResponseField>
+
+<ResponseField name="dimensions" type="object" required>
+  Generated image dimensions
+  
+  <Expandable title="dimensions properties">
+    <ResponseField name="width" type="integer" required>
+      Image width in pixels
+    </ResponseField>
+    
+    <ResponseField name="height" type="integer" required>
+      Image height in pixels
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="mediaId" type="integer">
+  Media vault ID (only if `saveToVault=true`)
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X POST https://your-domain.com/api/babecock/generate \
+  -H "Content-Type: application/json" \
+  -H "Cookie: connect.sid=your-session-cookie" \
+  -d '{
+    "babeImageUrl": "https://example.com/babe.jpg",
+    "cockImageUrl": "https://example.com/cock.jpg",
+    "layout": "auto",
+    "saveToVault": true
+  }'
+```
+
+## Example Response
+
+```json
+{
+  "success": true,
+  "imageUrl": "https://storage.supabase.co/object/public/general/babecock-abc123.jpg",
+  "layout": "side-by-side",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "mediaId": 456
+}
+```
+
+## Response Codes
+
+| Code | Description |
+|------|-------------|
+| 200  | Success - Babecock generated |
+| 400  | Bad Request - Invalid image URLs or format |
+| 401  | Unauthorized - User not authenticated |
+| 402  | Payment Required - Insufficient credits |
+| 413  | Payload Too Large - Image exceeds size limit |
+| 500  | Server error during processing |
+
+## Layout Detection
+
+When `layout="auto"`, the server analyzes aspect ratios:
+
+- **Side-by-side**: Used when images are portrait or square
+- **Top-bottom**: Used when images are landscape
+
+Manual layout selection overrides automatic detection.
+
+## Image Requirements
+
+- **Formats**: JPEG, PNG, WebP
+- **Max size**: 20MB per image
+- **Min dimensions**: 200x200 pixels
+- **Max dimensions**: 4000x4000 pixels
+
+## Notes
+
+- Generation typically takes 2-5 seconds
+- Images are automatically resized to match heights/widths
+- Results are stored temporarily; use `saveToVault` for permanent storage
+- Temporary results expire after 24 hours
+
+## Related Endpoints
+
+- [Upload Babe](/api/babecock/upload-babe) - Upload babe image
+- [Upload Cock](/api/babecock/upload-cock) - Upload cock image
+- [Remix](/api/babecock/remix) - Regenerate with different image
+- [Save Result](/api/babecock/save-result) - Save to Media Vault
