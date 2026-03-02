@@ -1,0 +1,383 @@
+---
+title: Scroller
+description: Create custom Reddit feeds with autoscroll from your favorite subreddits
+---
+
+## Overview
+
+Scroller is a personalized Reddit feed viewer that combines content from multiple subreddits into a single, continuous scrolling experience. Perfect for curating custom content streams with autoscroll functionality for hands-free browsing.
+
+## Getting Started
+
+<Steps>
+  <Step title="Add Subreddits">
+    Build your custom feed by adding your favorite subreddits. The app supports autocomplete suggestions as you type.
+  </Step>
+  
+  <Step title="Configure Filters">
+    Choose which media types to display (images, videos, GIFs) and set your preferred sort order.
+  </Step>
+  
+  <Step title="Start Browsing">
+    Your personalized feed loads automatically, combining content from all selected subreddits.
+  </Step>
+  
+  <Step title="Optional: Enable Autoscroll">
+    Turn on autoscroll for a hands-free viewing experience with customizable speed.
+  </Step>
+</Steps>
+
+## Subreddit Management
+
+### Adding Subreddits
+
+<Steps>
+  <Step title="Enter Subreddit Name">
+    Type a subreddit name in the input field (without the "r/" prefix).
+    
+    <Note>
+    The app provides autocomplete suggestions as you type to help you find subreddits.
+    </Note>
+  </Step>
+  
+  <Step title="Add to Feed">
+    Press Enter or click the + button to add the subreddit to your feed.
+  </Step>
+  
+  <Step title="Repeat as Needed">
+    Add as many subreddits as you want to build your custom feed.
+  </Step>
+</Steps>
+
+### Managing Your List
+
+- **Remove Subreddit**: Click the X button next to any subreddit chip
+- **View Active Subreddits**: All added subreddits appear as chips below the input field
+- **Favorites**: Frequently used subreddits can be saved for quick access
+
+<Warning>
+You must have at least one subreddit in your feed. The app will display an error if you try to load content without any subreddits configured.
+</Warning>
+
+## Feed Configuration
+
+### View Settings
+
+<AccordionGroup>
+  <Accordion title="View Mode">
+    Control how content is displayed:
+    
+    - **Large**: Full-size media with detailed post information
+    - **Compact**: Condensed layout showing more posts per screen
+    
+    Large view is ideal for enjoying media in detail, while compact view is better for quickly browsing through many posts.
+  </Accordion>
+  
+  <Accordion title="Sort Order">
+    Choose how posts are sorted:
+    
+    - **Hot**: Currently trending and popular posts
+    - **New**: Most recent posts in chronological order
+    - **Top**: Highest-rated posts within a time period
+    
+    The sort order applies to all subreddits in your feed.
+  </Accordion>
+  
+  <Accordion title="Top Time Filter">
+    When using "Top" sorting, select the time range:
+    
+    - **Hour**: Top posts from the last 60 minutes
+    - **Day**: Top posts from the last 24 hours
+    - **Week**: Top posts from the last 7 days
+    - **Month**: Top posts from the last 30 days
+    - **Year**: Top posts from the last 12 months
+    - **All Time**: All-time highest-rated posts
+  </Accordion>
+</AccordionGroup>
+
+### Media Filters
+
+Control which types of media appear in your feed:
+
+- **Images**: Static images (JPEG, PNG, WebP)
+- **Videos**: Video content (MP4, WebM, Reddit videos)
+- **GIFs**: Animated GIFs and GIF-like content (Gfycat, RedGIFs)
+
+<Note>
+**Smart Detection**: The app automatically classifies content from Gfycat, RedGIFs, and Giphy as GIFs, even though they're technically videos. This matches how users naturally think about content types.
+</Note>
+
+<Warning>
+At least one media type must be enabled. If you disable all types, the app will automatically re-enable images to prevent an empty feed.
+</Warning>
+
+## Autoscroll Feature
+
+Scroller includes a powerful autoscroll system for effortless browsing:
+
+### Controls
+
+- **Toggle Switch**: Turn autoscroll on/off
+- **Speed Slider**: Adjust scrolling speed from 1 (slowest) to 20 (fastest)
+- **Pause Button**: Temporarily pause without disabling autoscroll
+- **Status Indicator**: Shows current autoscroll state (Active/Paused)
+
+### Speed Presets
+
+Pre-configured speed settings for different browsing styles:
+
+- **Slow (10)**: Relaxed browsing pace - perfect for reading titles and enjoying media
+- **Medium (15)**: Moderate speed for general browsing
+- **Fast (20)**: Quick scrolling for rapid content discovery
+
+### Automatic Pausing
+
+Autoscroll intelligently pauses when you:
+
+- Click on a post or media item
+- Open a media modal/fullscreen view
+- Interact with any post actions
+- Manually scroll the feed
+
+<Note>
+Autoscroll automatically resumes when you close modals or stop interacting with the feed.
+</Note>
+
+## Feed Behavior
+
+### Initial Load
+
+When you first load or refresh your feed:
+
+1. Scroller fetches posts from all configured subreddits
+2. Posts are combined and sorted according to your settings
+3. Media types are filtered based on your selections
+4. The feed displays with skeleton placeholders during loading
+
+### Infinite Scrolling
+
+As you scroll down:
+
+- More posts automatically load when you reach near the bottom
+- A "Loading more..." indicator appears during fetch
+- New posts are deduplicated to prevent showing the same content twice
+- Up to 400 previously shown URLs are excluded from new loads
+
+### Manual Loading
+
+When autoscroll is disabled:
+
+- A "Load More" button appears at the bottom of the feed
+- Click to manually fetch the next batch of posts
+- Button is disabled during loading to prevent duplicate requests
+
+### End of Feed
+
+When no more content is available:
+
+- An "End of feed" indicator appears
+- The message suggests refreshing or trying different sort settings
+- Refresh the page to start fresh with new content
+
+## Post Interactions
+
+### Viewing Media
+
+- **Click Post**: Opens media in fullscreen modal
+- **Navigation**: Use arrow keys or on-screen buttons to move between posts
+- **Close**: Click outside, press Escape, or use the close button
+- **Auto-pause**: Autoscroll pauses while modal is open
+
+### Post Actions
+
+- **View on Reddit**: Opens the original post in a new tab
+- **View Subreddit**: Navigates to the post's subreddit
+- **Fullscreen**: Expands media to fill your screen
+
+## Settings Persistence
+
+All your preferences are automatically saved:
+
+- Subreddit list
+- View mode (large/compact)
+- Sort order and time filter
+- Media type filters
+- Autoscroll state and speed
+
+<Note>
+Settings are stored in browser localStorage and persist across sessions. Your configuration is remembered when you return to Scroller.
+</Note>
+
+## Practical Examples
+
+### Example 1: News and Current Events Feed
+
+```text
+Subreddits: worldnews, news, technology, science
+Sort: Hot
+Media: Images + Videos
+Autoscroll: Slow (10)
+```
+
+Ideal for staying updated on current events with a steady browsing pace.
+
+### Example 2: Photography and Art Collection
+
+```text
+Subreddits: earthporn, itookapicture, art, pics
+Sort: Top - Week
+Media: Images only
+View: Large
+Autoscroll: Medium (15)
+```
+
+Perfect for enjoying high-quality photography and artwork.
+
+### Example 3: Entertainment and Memes
+
+```text
+Subreddits: funny, memes, videos, unexpected
+Sort: Hot
+Media: All types
+View: Compact
+Autoscroll: Fast (20)
+```
+
+Great for quick entertainment and discovering viral content.
+
+### Example 4: Niche Hobby Feed
+
+```text
+Subreddits: woodworking, diy, homeimprovement
+Sort: Top - Month
+Media: Images + Videos
+View: Large
+Autoscroll: Disabled
+```
+
+Best for in-depth browsing of specific interests with manual control.
+
+## Technical Details
+
+### Deduplication System
+
+Scroller implements smart deduplication to prevent showing the same content multiple times:
+
+- **URL Normalization**: Media URLs are normalized (lowercased hostname, removed trailing slashes, etc.)
+- **Composite Keys**: Posts are tracked using a combination of subreddit and post ID
+- **Server-Side Exclusion**: Up to 400 previously seen URLs are sent to the server to exclude from new fetches
+- **Cross-Load Persistence**: Deduplication works across multiple load-more operations
+
+### Performance Optimizations
+
+- **Parallel Fetching**: Posts from all subreddits are fetched simultaneously
+- **Efficient Filtering**: Media type filtering happens client-side after fetch
+- **Skeleton Placeholders**: Shown during initial load for better perceived performance
+- **Ref-Based State**: Prevents race conditions during concurrent fetch operations
+- **Cancel on Unmount**: Pending API requests are cancelled when navigating away
+
+### API Integration
+
+- Uses the same `/api/fetch-reddit` endpoint as Gaslighter
+- Supports `excludeUrls` parameter for deduplication
+- Implements rate limiting and retry logic
+- Handles transient failures with exponential backoff
+
+## Usage Tracking
+
+When autoscroll is enabled, usage is tracked via:
+
+- `POST /api/scroller/track-autoscroll`: Increments autoscroll usage counter
+- Helps improve the feature based on actual usage patterns
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Feed Not Loading">
+    **Possible Causes:**
+    - No subreddits added to the feed
+    - All media types disabled
+    - Network connectivity issues
+    
+    **Solutions:**
+    - Add at least one subreddit
+    - Enable at least one media type
+    - Check your internet connection
+    - Try refreshing the page
+  </Accordion>
+  
+  <Accordion title="Autoscroll Not Working">
+    **Possible Causes:**
+    - Autoscroll is paused
+    - Speed set too low
+    - Browser window not focused
+    
+    **Solutions:**
+    - Check the pause button state
+    - Increase the speed slider value
+    - Ensure the browser tab is active
+    - Close any open media modals
+  </Accordion>
+  
+  <Accordion title="Seeing Duplicate Posts">
+    **Possible Causes:**
+    - Browser cache issues
+    - Rapid refresh/reload actions
+    
+    **Solutions:**
+    - Clear browser cache and reload
+    - Wait a few seconds between refreshes
+    - Try different sort settings
+  </Accordion>
+  
+  <Accordion title="Load More Not Working">
+    **Possible Causes:**
+    - Already fetching new posts
+    - Reached end of available content
+    - API rate limiting
+    
+    **Solutions:**
+    - Wait for current load to complete
+    - Try different sort settings or subreddits
+    - Wait a few minutes before retrying
+  </Accordion>
+  
+  <Accordion title="Settings Not Saving">
+    **Possible Causes:**
+    - Browser localStorage disabled
+    - Private/incognito mode
+    - Browser storage quota exceeded
+    
+    **Solutions:**
+    - Enable localStorage in browser settings
+    - Use a regular browser window
+    - Clear some browser data to free up space
+  </Accordion>
+</AccordionGroup>
+
+## Tips for Best Experience
+
+<AccordionGroup>
+  <Accordion title="Curate Themed Feeds">
+    Group similar subreddits together for focused browsing. Create separate sessions for different interests (news, entertainment, hobbies, etc.).
+  </Accordion>
+  
+  <Accordion title="Mix Content Types">
+    Enable all media types (images, videos, GIFs) for the most diverse and engaging feed experience.
+  </Accordion>
+  
+  <Accordion title="Adjust for Your Device">
+    Use compact view on mobile for better performance. Large view works great on desktop with high-resolution displays.
+  </Accordion>
+  
+  <Accordion title="Experiment with Sort Orders">
+    Try different combinations:
+    - Hot + Images for trending visual content
+    - Top + Week for the best recent posts
+    - New + All media for discovering fresh content
+  </Accordion>
+  
+  <Accordion title="Find Your Optimal Speed">
+    Start with the Slow preset and gradually increase speed until you find the right balance between browsing and content absorption.
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,142 @@
+---
+title: 'Validate Subreddit'
+api: 'POST /api/validate-subreddit'
+description: 'Check if a subreddit exists and is accessible'
+---
+
+## Overview
+
+This endpoint validates whether a subreddit name is valid and accessible via the Reddit API. It's useful for validating user input before creating sessions or fetching content.
+
+## Request Body
+
+<ParamField body="subreddit" type="string" required>
+  Subreddit name to validate. Can include `r/` prefix or not.
+  
+  Examples:
+  - `"pics"`
+  - `"r/aww"`
+  - `"cats"`
+</ParamField>
+
+## Response
+
+<ResponseField name="valid" type="boolean">
+  Whether the subreddit is valid and accessible
+</ResponseField>
+
+<ResponseField name="message" type="string" optional>
+  Error message if validation failed
+</ResponseField>
+
+<ResponseField name="subreddit" type="string" optional>
+  The normalized subreddit name (returned when valid)
+</ResponseField>
+
+## Examples
+
+### Validate a Subreddit
+
+```bash
+curl -X POST "https://app.joip.io/api/validate-subreddit" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subreddit": "pics"
+  }'
+```
+
+### Validate with r/ Prefix
+
+```bash
+curl -X POST "https://app.joip.io/api/validate-subreddit" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subreddit": "r/aww"
+  }'
+```
+
+## Response Examples
+
+### Valid Subreddit
+
+```json
+{
+  "valid": true,
+  "subreddit": "pics"
+}
+```
+
+### Invalid Subreddit
+
+```json
+{
+  "valid": false,
+  "message": "Subreddit not found or inaccessible"
+}
+```
+
+### Empty Subreddit Name
+
+```json
+{
+  "valid": false,
+  "message": "Invalid subreddit name"
+}
+```
+
+## Error Responses
+
+### Missing Subreddit Parameter
+
+**Status**: `400 Bad Request`
+
+```json
+{
+  "valid": false,
+  "message": "Validation error: Required at subreddit"
+}
+```
+
+### Reddit Service Not Configured
+
+**Status**: `500 Internal Server Error`
+
+```json
+{
+  "valid": false,
+  "message": "Content service is not configured"
+}
+```
+
+### Validation Error
+
+**Status**: `500 Internal Server Error`
+
+```json
+{
+  "valid": false,
+  "message": "Failed to validate subreddit"
+}
+```
+
+## Validation Logic
+
+1. **Name Cleaning**: Removes `r/` prefix and trims whitespace
+2. **Empty Check**: Rejects empty strings after cleaning
+3. **Reddit API Check**: Uses centralized Reddit service to verify subreddit exists and is accessible
+4. **Normalization**: Returns the cleaned, normalized subreddit name on success
+
+## Use Cases
+
+- **Form Validation**: Validate subreddit input in real-time as users type
+- **Bulk Validation**: Validate multiple subreddits before session creation
+- **Autocomplete**: Confirm a subreddit exists before adding it to a list
+- **Error Prevention**: Prevent invalid subreddits from being saved to sessions
+
+## Notes
+
+- Subreddit names are case-insensitive
+- The `r/` prefix is optional and automatically stripped
+- Validation checks both existence and accessibility (some subreddits may be private or quarantined)
+- The endpoint uses the centralized Reddit service, which handles API credentials and caching
+- This endpoint does not require authentication

@@ -1,0 +1,547 @@
+---
+title: 'Telegram Bot Administration'
+description: 'Configure and manage the JOIP Telegram bot integration'
+icon: 'message'
+---
+
+## Overview
+
+The JOIP platform integrates with Telegram to provide users with bot interactions, notifications, and payment processing. The Telegram admin panel provides tools for monitoring bot health, configuring messages, and managing webhooks.
+
+## Prerequisites
+
+To use the Telegram integration, configure these environment variables:
+
+```bash
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_BOT_USERNAME=your_bot_username
+TELEGRAM_WEBHOOK_SECRET=your_webhook_secret
+TELEGRAM_PREMIUM_CHANNEL_ID=@your_channel_id  # Optional
+```
+
+<Note>
+The bot must be created via [@BotFather](https://t.me/BotFather) before configuration.
+</Note>
+
+## Bot Health Monitoring
+
+Access the bot health dashboard at:
+
+```typescript
+GET /api/admin/telegram/health
+```
+
+### Health Metrics
+
+<CardGroup cols={2}>
+  <Card title="Bot Identity" icon="robot">
+    - Bot username
+    - Bot user ID
+    - Is bot verified
+    - Can join groups
+    - Can read all messages
+  </Card>
+  
+  <Card title="Webhook Status" icon="link">
+    - Webhook URL configured
+    - Pending update count
+    - Last error timestamp
+    - Last error message
+  </Card>
+  
+  <Card title="Command Configuration" icon="terminal">
+    - Required commands configured
+    - Command count
+    - Command list
+  </Card>
+  
+  <Card title="Channel Status" icon="users">
+    - Premium channel linked
+    - Channel member count
+    - Bot permissions in channel
+  </Card>
+</CardGroup>
+
+### Health Check Response
+
+```json
+{
+  "enabled": true,
+  "configured": true,
+  "botInfo": {
+    "id": 123456789,
+    "username": "joip_bot",
+    "firstName": "JOIP",
+    "canJoinGroups": true,
+    "canReadAllGroupMessages": false
+  },
+  "webhookInfo": {
+    "url": "https://app.joip.io/api/telegram/webhook",
+    "hasCustomCertificate": false,
+    "pendingUpdateCount": 0,
+    "lastErrorDate": null,
+    "lastErrorMessage": null,
+    "maxConnections": 40,
+    "allowedUpdates": ["message", "callback_query", "pre_checkout_query"]
+  },
+  "commands": [
+    { "command": "start", "description": "Start using JOIP" },
+    { "command": "credits", "description": "Check credit balance" },
+    { "command": "link", "description": "Link Telegram account" },
+    { "command": "buy", "description": "Purchase credits" }
+  ]
+}
+```
+
+## Webhook Configuration
+
+### Sync Webhook Settings
+
+Automatically configure webhook and commands:
+
+```typescript
+POST /api/admin/telegram/sync
+```
+
+This endpoint:
+1. Sets the webhook URL to production endpoint
+2. Configures required bot commands
+3. Validates webhook connectivity
+4. Returns updated health status
+
+**Response:**
+```json
+{
+  "success": true,
+  "webhookUrl": "https://app.joip.io/api/telegram/webhook",
+  "commands": ["start", "credits", "link", "buy", "help"],
+  "health": { /* health status */ }
+}
+```
+
+### Required Webhook Updates
+
+The bot is configured to receive these update types:
+
+```typescript
+const REQUIRED_TELEGRAM_WEBHOOK_UPDATES = [
+  'message',           // User messages
+  'callback_query',    // Inline button clicks
+  'pre_checkout_query' // Payment verification
+];
+```
+
+## Bot Commands
+
+The following commands must be configured:
+
+| Command | Description | Handler |
+|---------|-------------|----------|
+| `/start` | Initialize bot interaction | Welcome message with app link |
+| `/credits` | Check credit balance | Display current balance |
+| `/link` | Link Telegram to JOIP account | OAuth flow initiation |
+| `/buy` | Purchase credits | Payment menu |
+| `/help` | Get help information | Command list and support |
+
+### Command Configuration
+
+Commands are automatically synced via:
+
+```typescript
+await setTelegramCommands([
+  { command: 'start', description: 'Start using JOIP' },
+  { command: 'credits', description: 'Check credit balance' },
+  { command: 'link', description: 'Link Telegram account' },
+  { command: 'buy', description: 'Purchase credits' },
+  { command: 'help', description: 'Get help' }
+]);
+```
+
+## Bot Message Management
+
+Admins can customize bot messages via the **Messages** section.
+
+### Available Messages
+
+Access the message list:
+
+```typescript
+GET /api/admin/telegram/messages
+```
+
+**Message Types:**
+
+<AccordionGroup>
+  <Accordion title="Welcome Message" icon="hand-wave">
+    Sent when user sends `/start` command
+    
+    **Key:** `welcome`
+    
+    **Variables:**
+    - `{username}` - User's Telegram username or "there"
+  </Accordion>
+  
+  <Accordion title="Credits Balance" icon="coins">
+    Sent when user checks balance with `/credits`
+    
+    **Key:** `credits_balance`
+    
+    **Variables:**
+    - `{credits}` - User's current credit balance
+  </Accordion>
+  
+  <Accordion title="Link Account" icon="link">
+    Instructions for linking Telegram to JOIP account
+    
+    **Key:** `link_account`
+    
+    **Variables:**
+    - `{link_url}` - Deep link to OAuth flow
+  </Accordion>
+  
+  <Accordion title="Payment Success" icon="check">
+    Confirmation after successful credit purchase
+    
+    **Key:** `payment_success`
+    
+    **Variables:**
+    - `{credits}` - Credits purchased
+    - `{amount}` - Amount paid (formatted)
+  </Accordion>
+  
+  <Accordion title="Payment Failed" icon="xmark">
+    Notification when payment fails
+    
+    **Key:** `payment_failed`
+    
+    **Variables:**
+    - `{reason}` - Failure reason
+  </Accordion>
+</AccordionGroup>
+
+### Edit Message Content
+
+Update a bot message:
+
+```typescript
+PATCH /api/admin/telegram/messages/:key
+{
+  "content": "Welcome to JOIP, {username}! 🎉",
+  "parseMode": "HTML"  // Optional: HTML, Markdown, MarkdownV2
+}
+```
+
+<Warning>
+Message editing requires acquiring a lock to prevent concurrent edits. Locks are automatically released after update.
+</Warning>
+
+### Message Locking
+
+Prevents simultaneous edits by multiple admins:
+
+```typescript
+// Acquire lock
+POST /api/admin/telegram/messages/:key/lock
+
+// Release lock
+DELETE /api/admin/telegram/messages/:key/lock
+```
+
+Lock status includes:
+- Admin user ID who locked
+- Admin email
+- Lock timestamp
+- Auto-expires after 10 minutes
+
+### Message History
+
+View edit history for a message:
+
+```typescript
+GET /api/admin/telegram/messages/:key/history
+```
+
+Returns up to 50 previous versions with:
+- Content and parse mode
+- Editor user ID
+- Edit timestamp
+- Change type (update, rollback, reset)
+
+### Rollback Message
+
+Restore a previous message version:
+
+```typescript
+POST /api/admin/telegram/messages/:key/rollback/:historyId
+```
+
+### Reset to Default
+
+Restore original message template:
+
+```typescript
+POST /api/admin/telegram/messages/:key/reset
+```
+
+## Test Message Delivery
+
+Admins can test message delivery to their own Telegram account:
+
+```typescript
+POST /api/admin/telegram/messages/:key/test
+```
+
+**Requirements:**
+- Admin must have linked Telegram account
+- `users.telegramId` must be set
+- Rate limit: 10 messages per minute per admin
+
+**Example Response:**
+```json
+{
+  "success": true
+}
+```
+
+<Note>
+Test messages are sent with placeholder variable values (e.g., `{credits}` = "25").
+</Note>
+
+## Premium Channel Management
+
+If a premium channel is configured, admins can:
+
+### View Channel Status
+
+```typescript
+GET /api/admin/telegram/channel/status
+```
+
+**Response:**
+```json
+{
+  "channelInfo": {
+    "id": -1001234567890,
+    "title": "JOIP Premium",
+    "username": "joip_premium",
+    "type": "channel"
+  },
+  "stats": {
+    "memberCount": 150
+  },
+  "permissions": {
+    "canPostMessages": true,
+    "canEditMessages": true,
+    "canDeleteMessages": true,
+    "canInviteUsers": true
+  }
+}
+```
+
+### View Channel Members
+
+```typescript
+GET /api/admin/telegram/channel/users
+```
+
+**Query Parameters:**
+- `page` (number) - Page number (default: 1)
+- `limit` (number) - Results per page (default: 20, max: 100)
+- `status` (string) - Filter: `all`, `member`, `not_member`
+- `search` (string) - Search by email/name
+
+**Response:**
+```json
+{
+  "users": [
+    {
+      "id": "user-123",
+      "email": "user@example.com",
+      "telegramId": 123456789,
+      "telegramUsername": "john_doe",
+      "telegramLinkedAt": "2024-01-15T10:30:00Z",
+      "telegramChannelMember": true
+    }
+  ],
+  "total": 150,
+  "page": 1,
+  "hasMore": true
+}
+```
+
+### Bulk Invite Users
+
+Invite multiple users to the premium channel:
+
+```typescript
+POST /api/admin/telegram/channel/invite
+{
+  "userIds": ["user-123", "user-456"]
+}
+```
+
+## Payment Integration
+
+The Telegram bot supports payment processing via Telegram Payments.
+
+### Configure Payment Provider
+
+Set up via environment variables:
+
+```bash
+TELEGRAM_PAYMENT_PROVIDER_TOKEN=your_provider_token
+```
+
+### Payment Flow
+
+1. User sends `/buy` command
+2. Bot presents credit package options (inline keyboard)
+3. User selects package
+4. Bot creates invoice via `createInvoiceLink()`
+5. User completes payment in Telegram
+6. Bot receives `pre_checkout_query`
+7. Bot validates and answers with `answerPreCheckoutQuery()`
+8. Telegram processes payment
+9. Bot receives successful payment notification
+10. Credits are added to user account
+11. Bot sends payment success message
+
+### Invoice Creation
+
+```typescript
+const invoiceLink = await createTelegramInvoiceLink({
+  title: '100 JOIP Credits',
+  description: 'Purchase 100 credits for JOIP platform',
+  payload: JSON.stringify({ userId, packageId }),
+  currency: 'USD',
+  prices: [{ label: '100 Credits', amount: 500 }] // $5.00 in cents
+});
+```
+
+## Webhook Security
+
+Webhook requests are verified using the secret token:
+
+```typescript
+const isValid = verifyWebhookSecret(
+  req.headers['x-telegram-bot-api-secret-token'],
+  process.env.TELEGRAM_WEBHOOK_SECRET
+);
+```
+
+<Warning>
+All webhook endpoints reject requests with invalid secret tokens (403 Forbidden).
+</Warning>
+
+## Rate Limiting
+
+Telegram webhook endpoints have specific rate limits:
+
+```typescript
+const createTelegramWebhookLimiter = () => rateLimit({
+  windowMs: 1000,           // 1 second
+  max: 30,                  // 30 requests per second
+  message: 'Too many webhook requests'
+});
+```
+
+## Best Practices
+
+### Message Management
+
+1. **Test Before Deployment** - Always test messages before making them live
+2. **Use Variables** - Leverage message variables for personalization
+3. **Parse Mode** - Use HTML for better formatting control
+4. **Lock Messages** - Acquire locks before editing to prevent conflicts
+5. **Review History** - Check message history before rollbacks
+
+### Channel Management
+
+1. **Regular Monitoring** - Check channel status and member count weekly
+2. **Permission Verification** - Ensure bot has necessary channel permissions
+3. **Member Sync** - Periodically sync member status with database
+4. **Invite Validation** - Verify user tier before bulk invites
+
+### Security
+
+1. **Webhook Secret** - Use strong, unique webhook secret
+2. **Token Protection** - Never expose bot token in client code
+3. **Rate Limiting** - Monitor webhook rate limits
+4. **Input Validation** - Validate all user inputs from Telegram
+
+## Troubleshooting
+
+### Common Issues
+
+**Webhook Not Receiving Updates**
+- Verify webhook URL is accessible publicly
+- Check webhook secret is configured correctly
+- Review Telegram webhook info for errors: `GET /api/admin/telegram/health`
+- Ensure SSL certificate is valid
+
+**Bot Commands Not Working**
+- Sync commands via `POST /api/admin/telegram/sync`
+- Verify commands are registered: `GET /api/admin/telegram/health`
+- Check bot has necessary permissions
+
+**Messages Not Sending**
+- Verify user has linked Telegram account
+- Check `users.telegramId` is populated
+- Review server logs for API errors
+- Ensure bot is not blocked by user
+
+**Payment Issues**
+- Verify payment provider token is configured
+- Check invoice creation logs
+- Ensure currency and amounts are valid
+- Review pre-checkout query handling
+
+## API Reference
+
+### Get Bot Health
+
+```http
+GET /api/admin/telegram/health
+```
+
+### Sync Bot Configuration
+
+```http
+POST /api/admin/telegram/sync
+```
+
+### Get Bot Messages
+
+```http
+GET /api/admin/telegram/messages
+```
+
+### Get Specific Message
+
+```http
+GET /api/admin/telegram/messages/:key
+```
+
+### Update Message
+
+```http
+PATCH /api/admin/telegram/messages/:key
+Content-Type: application/json
+
+{
+  "content": "New message content",
+  "parseMode": "HTML"
+}
+```
+
+### Lock Message
+
+```http
+POST /api/admin/telegram/messages/:key/lock
+```
+
+### Test Message
+
+```http
+POST /api/admin/telegram/messages/:key/test
+```

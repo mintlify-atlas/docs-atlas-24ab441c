@@ -1,0 +1,223 @@
+---
+title: 'API Introduction'
+description: 'Overview of the JOIP Web Application API'
+---
+
+## Welcome to the JOIP API
+
+The JOIP (Jerk Off Instruction Player) API provides programmatic access to create and manage multimedia slideshows, AI-generated captions, and adult content features.
+
+## Base URL
+
+All API requests are made to:
+
+```
+https://your-domain.com/api
+```
+
+For local development:
+
+```
+http://localhost:5000/api
+```
+
+## API Architecture
+
+The JOIP API follows RESTful principles with:
+
+- **JSON Request/Response Format**: All endpoints accept and return JSON
+- **Session-Based Authentication**: Uses secure HTTP-only cookies
+- **Rate Limiting**: Token bucket algorithm protects endpoints
+- **Consistent Error Handling**: Standardized error responses across all endpoints
+
+## Core Features
+
+The API provides access to:
+
+### Sessions Management
+Create, update, and manage multimedia slideshow sessions with:
+- Reddit-based automatic content fetching
+- Manual/custom sessions with user uploads
+- Session sharing and privacy controls
+- AI-generated captions with themed prompts
+
+### Smart Captions
+Generate NSFW captions for images using:
+- OpenAI/OpenRouter integration
+- Themed caption styles (JOI, Forced-Bi, Beta, CBT, Cuckold)
+- Custom AI prompts
+- Caption caching with 24-hour TTL
+
+### Media Management
+Personal media vault with:
+- Supabase Storage integration
+- Bulk upload operations
+- User-specific folders and privacy
+- Community sharing capabilities
+
+### Additional Features
+- **Babecock Studio**: Image composition with layout detection
+- **AI Undress**: Image transformation using Freepik API
+- **Gaslighter**: Reddit content browsing with media replacement
+- **Scroller**: Custom Reddit feeds with autoscroll
+
+## Request Format
+
+All POST and PATCH requests should include:
+
+```json
+Content-Type: application/json
+```
+
+Example request:
+
+```bash
+curl -X POST https://your-domain.com/api/sessions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "My Session",
+    "subreddits": ["gonewild", "nsfw"],
+    "intervalMin": 3,
+    "intervalMax": 10
+  }'
+```
+
+## Response Format
+
+Successful responses return JSON with relevant data:
+
+```json
+{
+  "id": 123,
+  "title": "My Session",
+  "userId": "local-test",
+  "subreddits": ["gonewild", "nsfw"],
+  "createdAt": "2026-03-02T10:30:00.000Z"
+}
+```
+
+## Common Response Codes
+
+| Code | Description |
+|------|-------------|
+| `200` | Success |
+| `201` | Created |
+| `400` | Bad Request - Invalid input |
+| `401` | Unauthorized - Authentication required |
+| `402` | Payment Required - Insufficient credits |
+| `403` | Forbidden - Permission denied |
+| `404` | Not Found |
+| `429` | Too Many Requests - Rate limit exceeded |
+| `500` | Internal Server Error |
+| `503` | Service Unavailable - Feature not configured |
+
+## API Endpoints Overview
+
+### Sessions
+```
+GET    /api/sessions              List user sessions
+POST   /api/sessions              Create Reddit-based session
+POST   /api/sessions/manual       Create manual session
+GET    /api/sessions/:id          Get session details
+PATCH  /api/sessions/:id          Update session
+DELETE /api/sessions/:id          Delete session
+```
+
+### Captions
+```
+POST   /api/captions/ai           Generate AI caption
+POST   /api/captions/prewarm      Pre-generate captions
+POST   /api/manual/generate-ai-caption  Contextual caption
+```
+
+### Media
+```
+GET    /api/media                 List user media
+POST   /api/media                 Upload media
+DELETE /api/media/:id             Delete media
+POST   /api/media/:id/share       Share media
+```
+
+### Community
+```
+GET    /api/community             Browse community content
+POST   /api/community/sessions/:id/save  Save community session
+```
+
+### User
+```
+GET    /api/auth/user             Get current user
+PATCH  /api/auth/user             Update user profile
+POST   /api/auth/verify-age       Verify age
+```
+
+## Data Models
+
+### Session Object
+
+```typescript
+{
+  id: number;
+  title: string;
+  userId: string;
+  subreddits: string[];
+  intervalMin: number;        // Min seconds between slides
+  intervalMax: number;        // Max seconds between slides
+  transition: string;         // fade, slide, zoom, flip, none
+  thumbnail: string | null;
+  aiPrompt: string | null;
+  captionTheme: string | null;
+  isPublic: boolean;
+  isFavorite: boolean;
+  isManualMode: boolean;      // Disable auto-advance
+  isImported: boolean;        // Imported from external
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+### Media Object
+
+```typescript
+{
+  id: number;
+  sessionId: number | null;
+  mediaUrl: string;
+  thumbnail: string | null;
+  caption: string | null;
+  type: 'image' | 'gif' | 'video';
+  subreddit: string | null;
+  order: number;
+}
+```
+
+## Getting Started
+
+1. **Authenticate**: Login to receive session cookie
+2. **Create a Session**: POST to `/api/sessions` with configuration
+3. **Manage Content**: Upload media or fetch from Reddit
+4. **Generate Captions**: Use AI caption endpoints
+5. **Share**: Enable sharing and get shareable URLs
+
+For detailed examples and authentication setup, see the [Authentication](/api/authentication) guide.
+
+## SDK and Client Libraries
+
+Currently, the API is designed for direct HTTP requests. Official SDKs are planned for:
+
+- JavaScript/TypeScript
+- Python
+- Ruby
+
+## Support
+
+For API support and feature requests:
+- Check the documentation for detailed endpoint references
+- Review error messages for troubleshooting guidance
+- Contact support for technical assistance
+
+## Next Steps
+
+- [Authentication](/api/authentication) - Learn how to authenticate
+- [Rate Limiting](/api/rate-limiting) - Understand rate limits
+- [Error Handling](/api/errors) - Handle API errors properly

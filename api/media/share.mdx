@@ -1,0 +1,371 @@
+---
+title: 'Share Media'
+openapi: 'POST /api/media/:id/share'
+---
+
+<Note>
+  This endpoint requires authentication. Users can only share their own media files.
+</Note>
+
+## Overview
+
+Generate a shareable link for a media item and optionally share it to the Community feed. When shared to community, the media is copied to the public `general` bucket with watermarking applied to user uploads.
+
+## Path Parameters
+
+<ParamField path="id" type="number" required>
+  The database ID of the media item to share. Get this from `GET /api/user/media`.
+</ParamField>
+
+## Request Body
+
+<ParamField body="shareToCommunity" type="boolean" default={true}>
+  Whether to share the media to the global Community feed.
+  
+  - `true` - Creates a persistent copy in the `general` bucket and displays in Community
+  - `false` - Removes any existing community copy and tag assignments
+</ParamField>
+
+<ParamField body="tags" type="array">
+  Array of tag slugs to apply to the shared media (required when sharing user uploads to community).
+  
+  **Example**: `["brunette", "solo", "lingerie"]`
+  
+  **Validation**:
+  - At least one tag required for upload images shared to community
+  - Tags must exist in the canonical tags system
+  - Maximum per configuration (typically 10 tags)
+</ParamField>
+
+<ParamField body="policyAgreed" type="boolean">
+  Confirmation that user agrees to community sharing policy (required when sharing user uploads to community).
+  
+  Must be `true` when `shareToCommunity=true` for `source: "upload"` images.
+</ParamField>
+
+### Request Example
+
+```json
+{
+  "shareToCommunity": true,
+  "tags": ["brunette", "solo", "artistic"],
+  "policyAgreed": true
+}
+```
+
+## Community Sharing Process
+
+### When shareToCommunity=true
+
+1. **Generate share code** - Unique code for the media item
+2. **Copy to general bucket**:
+   - Downloads file from `user-media` bucket
+   - Applies JOIP watermark to user uploads (images only)
+   - Uploads to `general` bucket with unique filename
+3. **Create community record** - Entry in `community_media` table
+4. **Apply tags** - Associates selected tags with the community media
+5. **Update media record** - Sets `isShared=true` and `shareToCommunity=true`
+
+### When shareToCommunity=false
+
+1. **Update media record** - Sets `shareToCommunity=false`
+2. **Remove community copy**:
+   - Deletes file from `general` bucket
+   - Removes `community_media` record
+   - Removes all tag assignments
+
+### Watermarking
+
+**Applies to**: User uploads (`source: "upload"`) with watermarkable MIME types
+
+**Watermarkable types**:
+- `image/jpeg`
+- `image/png`
+- `image/webp`
+
+**Non-watermarked sources**:
+- `smart-caption` - AI-generated captions
+- `babecock` - Babecock Studio composites
+- `hypnococks` - HypnoCocks renders
+- Videos and GIFs (any source)
+
+### Concurrent Share Handling
+
+The endpoint uses advisory locks to handle concurrent share requests:
+- Prevents duplicate community records
+- Atomic updates to existing records
+- Safe for multiple users or browser tabs
+
+## Authorization
+
+- Users can **only share their own media**
+- Endpoint verifies `media.userId` matches authenticated user
+- Returns `404 Not Found` if media doesn't exist or belongs to another user
+
+## Response
+
+<ResponseField name="shareCode" type="string" required>
+  Unique share code for accessing the media via public URL
+</ResponseField>
+
+<ResponseField name="shareUrl" type="string" required>
+  Full shareable URL: `/shared/media/{shareCode}`
+</ResponseField>
+
+<ResponseField name="communityUrl" type="string">
+  Public URL of the file in the `general` bucket (when `shareToCommunity=true`)
+</ResponseField>
+
+<ResponseField name="communityMediaId" type="number">
+  Database ID of the community media record (when `shareToCommunity=true`)
+</ResponseField>
+
+### Success Response Example
+
+```json
+{
+  "shareCode": "abc123def456",
+  "shareUrl": "/shared/media/abc123def456",
+  "communityUrl": "https://example.supabase.co/storage/v1/object/public/general/beach_photo-a1b2c3d4.jpg",
+  "communityMediaId": 789
+}
+```
+
+## Error Responses
+
+### 400 Bad Request
+
+**Invalid media ID**:
+```json
+{
+  "message": "Invalid media ID"
+}
+```
+
+**Missing policy agreement** (for user upload images):
+```json
+{
+  "message": "Policy confirmation is required for upload sharing"
+}
+```
+
+**Missing tags** (for user upload images):
+```json
+{
+  "message": "At least one tag is required for upload sharing"
+}
+```
+
+### 404 Not Found
+
+**Media not found or unauthorized**:
+```json
+{
+  "message": "Media not found"
+}
+```
+
+### 500 Internal Server Error
+
+**Failed to create share link**:
+```json
+{
+  "message": "Failed to create share link"
+}
+```
+
+**General error**:
+```json
+{
+  "message": "Failed to share media"
+}
+```
+
+## Activity Tracking
+
+Successful shares are logged with:
+- **Action**: `media_shared`
+- **Feature**: `media_gallery`
+- **Details**: Media ID, share code, community sharing status
+
+## Example Usage
+
+### cURL
+
+```bash
+# Share to community with tags
+curl -X POST "https://your-domain.com/api/media/456/share" \
+  -H "Cookie: connect.sid=your-session-cookie" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "shareToCommunity": true,
+    "tags": ["brunette", "solo"],
+    "policyAgreed": true
+  }'
+
+# Share without community (link only)
+curl -X POST "https://your-domain.com/api/media/456/share" \
+  -H "Cookie: connect.sid=your-session-cookie" \
+  -H "Content-Type: application/json" \
+  -d '{"shareToCommunity": false}'
+```
+
+### JavaScript (Fetch API)
+
+```javascript
+// Share to community
+const response = await fetch('/api/media/456/share', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  credentials: 'include',
+  body: JSON.stringify({
+    shareToCommunity: true,
+    tags: ['brunette', 'artistic'],
+    policyAgreed: true
+  })
+});
+
+const result = await response.json();
+console.log('Share URL:', result.shareUrl);
+console.log('Share code:', result.shareCode);
+
+// Get full URL
+const fullUrl = `${window.location.origin}${result.shareUrl}`;
+```
+
+### React Example with Tag Selection
+
+```jsx
+import { useState } from 'react';
+
+function ShareMediaDialog({ mediaId, source, onShared }) {
+  const [shareToCommunity, setShareToCommunity] = useState(true);
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [policyAgreed, setPolicyAgreed] = useState(false);
+  const [sharing, setSharing] = useState(false);
+
+  const isUploadImage = source === 'upload';
+  const canShare = !isUploadImage || (selectedTags.length > 0 && policyAgreed);
+
+  const handleShare = async () => {
+    setSharing(true);
+    try {
+      const response = await fetch(`/api/media/${mediaId}/share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          shareToCommunity,
+          tags: selectedTags,
+          policyAgreed
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+
+      const result = await response.json();
+      
+      // Copy share URL to clipboard
+      const fullUrl = `${window.location.origin}${result.shareUrl}`;
+      await navigator.clipboard.writeText(fullUrl);
+      
+      alert('Share link copied to clipboard!');
+      onShared?.(result);
+    } catch (error) {
+      console.error('Share failed:', error);
+      alert(`Failed to share: ${error.message}`);
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  return (
+    <div>
+      <h3>Share Media</h3>
+      
+      <label>
+        <input
+          type="checkbox"
+          checked={shareToCommunity}
+          onChange={(e) => setShareToCommunity(e.target.checked)}
+        />
+        Share to Community Feed
+      </label>
+
+      {shareToCommunity && isUploadImage && (
+        <div>
+          <div>
+            <label>Select Tags (required):</label>
+            <TagSelector
+              selected={selectedTags}
+              onChange={setSelectedTags}
+            />
+          </div>
+
+          <label>
+            <input
+              type="checkbox"
+              checked={policyAgreed}
+              onChange={(e) => setPolicyAgreed(e.target.checked)}
+            />
+            I agree to the community sharing policy
+          </label>
+        </div>
+      )}
+
+      <button onClick={handleShare} disabled={sharing || !canShare}>
+        {sharing ? 'Sharing...' : 'Share'}
+      </button>
+    </div>
+  );
+}
+```
+
+### Unshare from Community
+
+```javascript
+// Remove from community while keeping share link
+const response = await fetch('/api/media/456/share', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({
+    shareToCommunity: false
+  })
+});
+
+const result = await response.json();
+console.log('Media unshared from community');
+// Share code still exists for direct link sharing
+```
+
+## Related Endpoints
+
+### DELETE /api/media/:id/share
+
+Completely remove sharing:
+- Deletes share code
+- Removes community copy if shared
+- Sets `isShared=false` and `shareToCommunity=false`
+
+### POST /api/user/media/share
+
+Share by storage path instead of database ID:
+- Accepts `filePath` in request body
+- Creates database record if needed
+- Same sharing behavior otherwise
+
+## Notes
+
+- Share codes are unique and unguessable (UUID-based)
+- Community copies are persistent and remain even if original is deleted from user's vault
+- Watermarking is applied automatically to user upload images
+- Generated media (Smart Captions, Babecock, HypnoCocks) is not watermarked
+- Tag assignments are only stored for community media, not the original
+- Multiple concurrent share requests are handled safely with database locks
+- Shared media appears in the Community feed at `/community`

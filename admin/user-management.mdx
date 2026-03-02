@@ -1,0 +1,444 @@
+---
+title: 'User Management'
+description: 'Comprehensive tools for managing users, roles, and permissions'
+icon: 'users'
+---
+
+## Overview
+
+The User Management interface provides admins with powerful tools to view, search, filter, and manage all platform users. Access this section via the **Users** tab in the admin panel.
+
+## User List View
+
+The main user list displays essential user information with advanced filtering capabilities:
+
+### Display Columns
+
+| Column | Description |
+|--------|-------------|
+| **User** | Name or email with avatar, user ID, and activity preview |
+| **Email** | User's email address |
+| **Status & Role** | Account status (Active/Inactive) and role badge |
+| **Joined** | Account creation date |
+| **Actions** | Quick action buttons (View, Edit, Delete) |
+
+### Usage Stats Preview
+
+Each user row displays inline activity metrics:
+- **Sessions created** - Number of JOIP sessions
+- **Media uploaded** - Files in Media Vault
+- Additional metrics visible on hover
+
+## Search and Filtering
+
+### Search Functionality
+
+The search bar supports filtering by:
+- **Email address** (case-insensitive, partial match)
+- **First name** (case-insensitive, partial match)
+- **Last name** (case-insensitive, partial match)
+
+API endpoint:
+```typescript
+GET /api/admin/users?search=john
+```
+
+### Filter Options
+
+<AccordionGroup>
+  <Accordion title="All Users" icon="users">
+    Displays all registered users without filtering
+  </Accordion>
+  
+  <Accordion title="Active Accounts" icon="circle-check">
+    Shows only users with `isActive = true`
+  </Accordion>
+  
+  <Accordion title="Inactive Accounts" icon="circle-xmark">
+    Shows users with `isActive = false`
+  </Accordion>
+  
+  <Accordion title="Recent Signups" icon="clock">
+    Shows users created in the last 30 days
+  </Accordion>
+</AccordionGroup>
+
+### Pagination
+
+Results are paginated with configurable page size:
+- **Default:** 50 users per page
+- **API Parameters:**
+  - `page` - Page number (1-indexed)
+  - `limit` - Results per page (max: 100)
+
+```typescript
+GET /api/admin/users?page=1&limit=50
+```
+
+## User Details View
+
+Clicking "View Details" or the user's name opens a comprehensive profile with:
+
+### Basic Information
+
+- User ID (Replit OIDC or local auth)
+- Email address
+- First and last name
+- Profile image URL
+- Role and permissions
+- Account status (Active/Inactive)
+- Created and updated timestamps
+
+### Usage Statistics
+
+Detailed metrics from the `user_usage_stats` table:
+
+<CardGroup cols={2}>
+  <Card title="Session Activity" icon="file-text">
+    - Sessions created
+    - Sessions viewed
+    - Sessions edited
+    - Sessions deleted
+    - Sessions shared
+    - Sessions favorited
+  </Card>
+  
+  <Card title="Caption Generation" icon="wand-magic-sparkles">
+    - Smart captions generated
+    - Custom captions created
+    - Theme breakdown (JOI, Forced-Bi, Beta, CBT, Cuckold)
+  </Card>
+  
+  <Card title="Babecock Studio" icon="images">
+    - Images created
+    - Remixes generated
+    - Layout distribution (Side-by-Side, Top-Bottom)
+  </Card>
+  
+  <Card title="Media Management" icon="folder">
+    - Media uploaded
+    - Media deleted
+    - Media shared
+    - Media downloaded
+    - Bulk downloads performed
+  </Card>
+</CardGroup>
+
+### Recent Sessions
+
+Displays the user's 10 most recent sessions with:
+- Session title and thumbnail
+- Subreddit sources
+- Public/private status
+- Favorite status
+- Creation and update dates
+
+### Media Vault Preview
+
+Shows the 20 most recent media items:
+- File name and original name
+- File URL and size
+- MIME type
+- Dimensions (width × height)
+- Source (Smart Caption, Babecock, etc.)
+- Caption and tags
+- Shared status
+- Upload date
+
+### Activity Logs
+
+The 50 most recent activity entries from `user_activity_logs`:
+- Action type (e.g., `session_created`, `caption_generated`)
+- Feature (sessions, captions, media, etc.)
+- Detailed action payload (JSON)
+- Timestamp
+
+### Summary Metrics
+
+- **Total Activity Score** - Combined activity count
+- **Total Sessions** - Session count
+- **Total Media** - Media vault items
+- **Account Age** - Days since registration
+
+## User Editing
+
+### Editable Fields
+
+Admins can update the following user attributes:
+
+```typescript
+PATCH /api/admin/users/:id
+{
+  "email": "user@example.com",
+  "firstName": "John",
+  "lastName": "Doe"
+}
+```
+
+<Note>
+Input is sanitized and validated using `adminUserUpdateSchema` before applying changes.
+</Note>
+
+### Role Management
+
+Update user roles via the dedicated endpoint:
+
+```typescript
+PATCH /api/admin/users/:id/role
+{
+  "role": "admin" // or "user"
+}
+```
+
+#### Role Restrictions
+
+<Warning>
+- Admins cannot demote themselves
+- System administrator accounts (e.g., `matt@mediaglobe.io`) cannot be modified
+- Invalid roles are rejected (must be `admin` or `user`)
+</Warning>
+
+### Audit Logging
+
+All user modifications are logged to `audit_logs`:
+
+```typescript
+{
+  "userId": "admin-id",
+  "action": "update_user" | "update_user_role",
+  "targetType": "user",
+  "targetId": "target-user-id",
+  "details": { /* changes */ },
+  "ipAddress": "127.0.0.1",
+  "userAgent": "Mozilla/5.0..."
+}
+```
+
+## User Actions
+
+### Delete User
+
+Permanently remove a user and all associated data:
+
+```typescript
+DELETE /api/admin/users/:id
+```
+
+<Warning>
+User deletion is irreversible and cascades to:
+- Content sessions and media
+- Shared sessions
+- Media vault files
+- Activity logs
+- Usage statistics
+</Warning>
+
+Confirmation dialog required in the UI before deletion.
+
+### Export Users to CSV
+
+Export all users with usage statistics:
+
+```typescript
+GET /api/admin/users/export/csv
+```
+
+Generated CSV includes:
+- User profile data (ID, email, name, role)
+- Join date and last activity
+- Session counts
+- Caption generation stats
+- Media upload counts
+- Babecock creation stats
+
+File naming convention: `users_export_YYYY-MM-DD.csv`
+
+<Note>
+Export actions are logged to audit logs with user count and export timestamp.
+</Note>
+
+## Bulk Operations
+
+### Refresh User List
+
+Manually refresh the user list without page reload:
+
+```typescript
+queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] })
+```
+
+Triggered by the "Refresh" button in the UI.
+
+## Advanced Querying
+
+### Combining Filters
+
+The API supports multiple simultaneous filters:
+
+```typescript
+GET /api/admin/users?search=john&filter=active&page=1&limit=50
+```
+
+### Sorting Options
+
+Sort users by various fields:
+
+- `sortBy`: `createdAt` (default), `email`, `firstName`, `lastName`, `lastActivity`
+- `sortOrder`: `desc` (default) or `asc`
+
+```typescript
+GET /api/admin/users?sortBy=lastActivity&sortOrder=desc
+```
+
+## User Activity Tracking
+
+Detailed user activity is available via:
+
+```typescript
+GET /api/admin/users/:userId/activity
+```
+
+Returns paginated activity logs with:
+- Action type and feature
+- Detailed JSON payload
+- IP address and user agent
+- Session ID
+- Timestamp
+
+## Best Practices
+
+### User Moderation
+
+1. **Review Activity** - Check recent activity before taking action
+2. **Verify Identity** - Confirm user identity via email before sensitive changes
+3. **Document Changes** - Use audit logs to track administrative actions
+4. **Gradual Restrictions** - Consider deactivating before deleting
+5. **Backup Data** - Export user data before permanent deletion
+
+### Performance Tips
+
+1. **Pagination** - Use appropriate page sizes (50-100) to maintain performance
+2. **Specific Searches** - Use targeted search terms to reduce result sets
+3. **Filter Combinations** - Combine filters to narrow results efficiently
+4. **Export Sparingly** - CSV exports can be resource-intensive on large datasets
+
+## Troubleshooting
+
+### Common Issues
+
+**User Not Found After Search**
+- Verify spelling and try partial matches
+- Check if user exists in database
+- Review filter settings (may be excluding user)
+
+**Unable to Update Role**
+- Ensure target user is not a system administrator
+- Verify you're not attempting to demote yourself
+- Check role value is exactly `admin` or `user`
+
+**Export Fails or Times Out**
+- Large datasets may require increased timeout
+- Consider filtering before export
+- Check server logs for specific errors
+
+## API Reference
+
+### Get Users List
+
+```http
+GET /api/admin/users
+```
+
+**Query Parameters:**
+- `search` (string, optional) - Search term
+- `filter` (string, optional) - Filter type: `all`, `active`, `inactive`, `recent`
+- `page` (number, optional) - Page number (default: 1)
+- `limit` (number, optional) - Results per page (default: 50, max: 100)
+- `sortBy` (string, optional) - Sort field (default: `createdAt`)
+- `sortOrder` (string, optional) - Sort order: `asc` or `desc` (default: `desc`)
+
+**Response:**
+```json
+{
+  "users": [
+    {
+      "id": "user-123",
+      "email": "user@example.com",
+      "firstName": "John",
+      "lastName": "Doe",
+      "role": "user",
+      "isActive": true,
+      "createdAt": "2024-01-15T10:30:00Z",
+      "sessionsCreated": 12,
+      "smartCaptionsGenerated": 45
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 250,
+    "totalPages": 5
+  }
+}
+```
+
+### Get User Details
+
+```http
+GET /api/admin/users/:id/details
+```
+
+**Response:**
+```json
+{
+  "user": { /* user profile */ },
+  "usageStats": { /* detailed statistics */ },
+  "sessions": [ /* recent sessions */ ],
+  "media": [ /* media vault items */ ],
+  "activityLogs": [ /* activity history */ ],
+  "summary": {
+    "totalActivity": 123,
+    "totalSessions": 10,
+    "totalMedia": 50,
+    "accountAge": 45
+  }
+}
+```
+
+### Update User
+
+```http
+PATCH /api/admin/users/:id
+Content-Type: application/json
+
+{
+  "email": "newemail@example.com",
+  "firstName": "Updated",
+  "lastName": "Name"
+}
+```
+
+### Update User Role
+
+```http
+PATCH /api/admin/users/:id/role
+Content-Type: application/json
+
+{
+  "role": "admin"
+}
+```
+
+### Delete User
+
+```http
+DELETE /api/admin/users/:id
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "User deleted successfully"
+}
+```

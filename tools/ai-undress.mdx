@@ -1,0 +1,471 @@
+---
+title: AI Undress
+description: AI-powered image transformation tool with quality settings and provider selection
+---
+
+## Overview
+
+AI Undress is an advanced image transformation tool that uses AI models to generate edited versions of uploaded images. The feature supports multiple quality levels and automatically manages provider selection for optimal results.
+
+<Warning>
+**Content Policy**: This tool is subject to strict usage policies. You must accept the consent agreement before using AI Undress. Only use images you have full legal rights to, and never upload content featuring minors or individuals without explicit consent.
+</Warning>
+
+## Getting Started
+
+<Steps>
+  <Step title="Accept Consent Agreement">
+    On first use, review and accept the AI Undress consent agreement. This covers:
+    - Ownership and consent requirements
+    - Deepfake policy and restrictions
+    - Strict minors policy
+  </Step>
+  
+  <Step title="Upload an Image">
+    Drag and drop an image or click to browse. Supported formats:
+    - JPEG (.jpg, .jpeg)
+    - PNG (.png)
+    - WebP (.webp)
+    
+    Maximum file size: 20MB
+  </Step>
+  
+  <Step title="Choose Quality Level">
+    Select between:
+    - **Standard Undress**: Faster processing, lower credit cost
+    - **High Quality Undress**: Better results, higher credit cost
+  </Step>
+  
+  <Step title="Generate">
+    Click the generate button and wait for processing (typically under 2 minutes).
+  </Step>
+  
+  <Step title="Save or Download">
+    Once complete, save to your Media Vault or download the result directly.
+  </Step>
+</Steps>
+
+## Quality Levels
+
+### Standard Undress (Low Quality)
+
+- **Credit Cost**: 25 credits (default)
+- **Provider**: Freepik (Seedream 4.5 Edit)
+- **Processing Time**: 30-90 seconds
+- **Use Case**: Quick generations, testing, or when credits are limited
+
+### High Quality Undress
+
+- **Credit Cost**: 45 credits (default)
+- **Provider**: xAI (Grok Imagine Pro) with Freepik fallback
+- **Processing Time**: 40-120 seconds
+- **Use Case**: Best results, final outputs, important generations
+
+<Note>
+The app automatically handles provider selection and failover. If the primary provider is unavailable, it seamlessly switches to the backup provider.
+</Note>
+
+## Upload Options
+
+### Drag and Drop
+
+1. Drag an image file onto the upload area
+2. File is validated automatically
+3. Preview appears immediately
+
+### Click to Browse
+
+1. Click the upload area
+2. Select a file from your computer
+3. Image loads into the preview
+
+### JOIP Transfer
+
+Transfer images directly from other JOIP tools:
+
+1. In Media Vault, Smart Captions, or Babecock Studio, click "Send to AI Undress"
+2. Image automatically loads in AI Undress
+3. Ready to generate immediately
+
+<Note>
+JOIP transfers preserve the original image metadata including filename and MIME type.
+</Note>
+
+## Image Requirements
+
+### Supported Formats
+
+- **JPEG**: Most common format, widely compatible
+- **PNG**: Lossless quality, supports transparency
+- **WebP**: Modern format with good compression
+
+<Warning>
+**GIF files are NOT supported**. The AI models only work with static images. If you need to process an animated GIF, extract a single frame first.
+</Warning>
+
+### Size Limits
+
+- **Maximum File Size**: 20MB
+- **Recommended Resolution**: 512px - 2048px on longest edge
+- **Aspect Ratios**: All standard ratios supported
+
+### Image Quality Tips
+
+<AccordionGroup>
+  <Accordion title="Resolution">
+    Higher resolution input generally produces better results, but processing time increases. Aim for 1024-2048px on the longest edge for best balance.
+  </Accordion>
+  
+  <Accordion title="Lighting">
+    Well-lit images with clear subject visibility produce the most accurate results. Avoid heavily shadowed or overexposed images.
+  </Accordion>
+  
+  <Accordion title="Subject Clarity">
+    Images where the subject is clearly visible and in focus work best. Blurry or distant subjects may produce unpredictable results.
+  </Accordion>
+  
+  <Accordion title="Composition">
+    Center-framed subjects with minimal background clutter tend to process more reliably than complex compositions.
+  </Accordion>
+</AccordionGroup>
+
+## Processing Flow
+
+### Generation Process
+
+<Steps>
+  <Step title="Image Upload">
+    Your image is uploaded and validated client-side for format and size compliance.
+  </Step>
+  
+  <Step title="Credit Check">
+    The system verifies you have sufficient credits for the selected quality level.
+  </Step>
+  
+  <Step title="Provider Selection">
+    Based on quality level and provider availability, the optimal AI provider is selected.
+  </Step>
+  
+  <Step title="AI Processing">
+    Your image is sent to the AI provider for processing. A progress indicator shows the generation is in progress.
+  </Step>
+  
+  <Step title="Result Delivery">
+    Once complete, the generated image appears with options to compare, download, or save.
+  </Step>
+</Steps>
+
+### Processing Time
+
+Typical processing times:
+
+- **Standard Quality**: 30-90 seconds
+- **High Quality**: 40-120 seconds
+
+<Note>
+Processing times may vary based on server load and image complexity. The system has a 90-second timeout, after which it will retry or report an error.
+</Note>
+
+## Provider System
+
+### Available Providers
+
+#### xAI (Grok Imagine)
+
+- **Models**: Grok Imagine Image Pro (primary), Grok Imagine Image (fallback)
+- **Quality**: Highest quality results
+- **Speed**: Moderate (40-120 seconds)
+- **Availability**: Requires `XAI_API_KEY`
+
+#### Freepik (Seedream 4.5)
+
+- **Model**: Freepik Seedream v4.5 Edit
+- **Quality**: Good quality, reliable results
+- **Speed**: Fast (30-90 seconds)
+- **Availability**: Requires `FREEPIK_API_KEY`
+
+### Automatic Failover
+
+The app implements intelligent failover:
+
+1. **High Quality**: Tries xAI first, falls back to Freepik if needed
+2. **Standard Quality**: Uses Freepik primarily, falls back to xAI if Freepik fails
+3. **Provider Down**: Shows clear error message if all providers unavailable
+
+<Note>
+Failover is transparent to the user. The app automatically selects the best available provider without requiring manual intervention.
+</Note>
+
+## History and Management
+
+### Generation History
+
+All your generations are tracked in the history rail:
+
+- View up to 8 recent generations
+- Click to reload any previous result
+- See processing status (pending, completed, failed)
+- Track which provider was used
+
+### History Features
+
+- **Reload**: Click any history item to view it again
+- **Status Indicators**: Color-coded status (processing, completed, failed)
+- **Provider Info**: See which AI provider was used
+- **Quality Badge**: Identify standard vs high quality generations
+
+### Managing History
+
+History items include:
+
+- Original image preview
+- Generated result (when available)
+- Processing status
+- Timestamp
+- Provider used
+- Quality level
+
+<Note>
+History is stored in your account and persists across sessions. Failed generations are retained so you can see what didn't work.
+</Note>
+
+## Compare Mode
+
+View before and after images side-by-side:
+
+<Steps>
+  <Step title="Enable Compare">
+    Click the "Compare" button after a successful generation.
+  </Step>
+  
+  <Step title="Adjust Slider">
+    Drag the slider left/right to reveal before and after portions.
+  </Step>
+  
+  <Step title="Review Changes">
+    Compare the original and generated images in detail.
+  </Step>
+  
+  <Step title="Exit Compare">
+    Click "Exit Compare" to return to full result view.
+  </Step>
+</Steps>
+
+<Note>
+Compare mode is only available after a successful generation. The slider position can be adjusted from 5% to 95%.
+</Note>
+
+## Saving and Downloading
+
+### Save to Media Vault
+
+1. Click the "Save" button after generation
+2. Optionally toggle "Share to Community" to make it visible in the community feed
+3. Image is saved to your personal Media Vault
+4. Access it later from the Media Vault page
+
+### Download to Computer
+
+1. Hover over the result image
+2. Click the "Download" button that appears
+3. Image downloads to your default downloads folder
+4. Filename format: `undress_[timestamp].[extension]`
+
+<Note>
+Downloaded images include the JOIP watermark in the latest revision. Saving to Media Vault also applies the watermark for consistency.
+</Note>
+
+## Credit System
+
+### Credit Costs
+
+- **Standard Undress**: 25 credits (default)
+- **High Quality Undress**: 45 credits (default)
+
+<Warning>
+Credit costs are configurable by server settings and may change. Always check your current credit balance before generating.
+</Warning>
+
+### Credit Checks
+
+Before generation:
+
+1. System checks your credit balance
+2. Verifies you have enough for the selected quality
+3. Shows insufficient credits dialog if needed
+4. Credits are deducted only after successful generation
+
+### Insufficient Credits
+
+If you don't have enough credits:
+
+- An "Insufficient Credits" dialog appears
+- Shows required vs available credits
+- Provides link to purchase more credits
+- Generation is blocked until credits are added
+
+## Daily Limits
+
+AI Undress has daily generation limits:
+
+- **Active Generations**: Maximum 3 concurrent generations
+- **Daily Limit**: Configurable per server settings
+- **Reset Time**: Midnight UTC
+
+<Note>
+Daily limits help manage server resources and prevent abuse. Limits reset daily at midnight UTC.
+</Note>
+
+## Remix and Retry
+
+### Remix Feature
+
+Generate a new variation from the same source image:
+
+1. Click "Remix" after a completed generation
+2. Same settings and quality level are used
+3. New credits are charged
+4. Different result may be produced
+
+### Retry Failed Generations
+
+If a generation fails:
+
+1. Click "Retry" on the failed history item
+2. Reloads the original image
+3. Allows you to try again with the same or different settings
+
+<Note>
+**Refunds**: Failed generations that deducted credits are automatically refunded. Check your transaction history for refund details.
+</Note>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Service Unavailable">
+    **Error**: "AI Provider Service is Down"
+    
+    **Causes**:
+    - All AI providers are temporarily unavailable
+    - Server configuration issues
+    - Provider API keys missing or invalid
+    
+    **Solutions**:
+    - Wait a few minutes and try again
+    - Check the status indicator in the UI
+    - Contact support if the issue persists
+  </Accordion>
+  
+  <Accordion title="Generation Failed">
+    **Error**: "Generation failed. Please try again."
+    
+    **Causes**:
+    - Image content rejected by AI provider
+    - Network timeout or connectivity issues
+    - Provider temporary error
+    
+    **Solutions**:
+    - Try a different image
+    - Wait and retry
+    - Use a different quality level
+    - Check your internet connection
+  </Accordion>
+  
+  <Accordion title="Upload Failed">
+    **Error**: Various upload-related errors
+    
+    **Causes**:
+    - File too large (>20MB)
+    - Unsupported format (GIF, etc.)
+    - Corrupted image file
+    
+    **Solutions**:
+    - Compress or resize the image
+    - Convert to JPEG, PNG, or WebP
+    - Try a different source image
+    - Verify file is not corrupted
+  </Accordion>
+  
+  <Accordion title="Timeout Errors">
+    **Error**: "Request timed out after [X]ms"
+    
+    **Causes**:
+    - AI provider processing too slowly
+    - Network latency issues
+    - Server overload
+    
+    **Solutions**:
+    - Retry the generation
+    - Try a smaller/simpler image
+    - Wait for off-peak hours
+    - Contact support if persistent
+  </Accordion>
+  
+  <Accordion title="Active Generation Limit">
+    **Error**: "You already have 3 generations in progress"
+    
+    **Causes**:
+    - Maximum concurrent generations reached
+    - Previous generations still processing
+    
+    **Solutions**:
+    - Wait for one generation to complete
+    - Check history for stuck processing items
+    - Refresh the page to sync status
+  </Accordion>
+</AccordionGroup>
+
+## Privacy and Safety
+
+### Consent Requirements
+
+You must agree to:
+
+- **Ownership**: You have full legal rights to all uploaded images
+- **Consent**: Explicit consent for every image you upload or edit
+- **No Deepfakes**: No synthetic content of real people without written consent
+- **Minors Policy**: Absolutely no content featuring minors or youthful-looking individuals
+
+<Warning>
+Violating the consent policy may result in immediate account suspension and potential legal action. Always ensure you have proper rights and consent for all images.
+</Warning>
+
+### Data Handling
+
+- Uploaded images are sent to AI providers for processing
+- Generated results are stored in your account
+- Images are not shared publicly unless you explicitly choose to
+- Failed generations and their data are retained for debugging
+
+### Community Sharing
+
+When saving to Media Vault:
+
+- **Private (default)**: Only visible to you
+- **Share to Community**: Visible in the community feed
+- You control sharing on each save
+- Can remove from community later via Media Vault
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Choose Quality Based on Use">
+    Use Standard quality for testing or when credits are limited. Reserve High Quality for final results or important generations.
+  </Accordion>
+  
+  <Accordion title="Optimize Images Before Upload">
+    Resize to 1024-2048px on the longest edge for best balance of quality and processing time. Remove unnecessary metadata.
+  </Accordion>
+  
+  <Accordion title="Use Compare Mode">
+    Always use compare mode to evaluate results before saving. This helps you decide if you need to regenerate.
+  </Accordion>
+  
+  <Accordion title="Save Favorites Only">
+    To conserve storage and keep your vault organized, only save results you actually want to keep.
+  </Accordion>
+  
+  <Accordion title="Leverage History">
+    Use the history feature to review past generations and avoid re-processing the same image unnecessarily.
+  </Accordion>
+</AccordionGroup>

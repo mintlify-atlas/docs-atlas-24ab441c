@@ -1,0 +1,416 @@
+---
+title: 'Deploy on Replit'
+description: 'Complete guide to deploying JOIP Web Application on Replit with OIDC authentication'
+icon: 'rocket'
+---
+
+## Overview
+
+Replit is the primary deployment platform for JOIP Web Application, offering seamless hosting with built-in authentication, automatic HTTPS, and zero-configuration deployment. This guide covers the complete deployment process from initial setup to production.
+
+## Prerequisites
+
+Before deploying to Replit, ensure you have:
+
+- A Replit account (free or paid)
+- PostgreSQL database (Neon recommended)
+- Supabase project for file storage
+- Required API keys (Reddit, AI providers)
+- Basic understanding of environment variables
+
+## Deployment Steps
+
+<Steps>
+  <Step title="Create New Repl">
+    1. Log in to [Replit](https://replit.com)
+    2. Click "Create Repl"
+    3. Select "Import from GitHub" or upload your code
+    4. Choose **Node.js** as the language
+    5. Name your Repl (e.g., "joip-production")
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    Navigate to the **Secrets** tab (Tools → Secrets) and add all required environment variables. See the [Environment Variables](/guides/deployment/environment-variables) page for the complete reference.
+
+    **Critical Variables:**
+    ```bash
+    DATABASE_URL=postgresql://user:password@host:5432/database
+    SESSION_SECRET=your-secure-random-string
+    SUPABASE_URL=https://your-project.supabase.co
+    SUPABASE_ANON_KEY=your-anon-key
+    SUPABASE_SERVICE_KEY=your-service-key
+    ```
+  </Step>
+
+  <Step title="Configure Replit OIDC Authentication">
+    Replit provides built-in OpenID Connect (OIDC) authentication. Configure these variables:
+
+    ```bash
+    REPLIT_DOMAINS=your-repl.replit.app
+    REPL_ID=your-repl-id
+    ISSUER_URL=https://identity.util.repl.co
+    ```
+
+    <Note>
+      - `REPLIT_DOMAINS` supports multiple domains separated by commas
+      - `REPL_ID` is automatically populated by Replit
+      - The app prioritizes `app.joip.io` if present in domains
+    </Note>
+
+    The application automatically detects Replit environment and enables OIDC when `REPLIT_DOMAINS` is set.
+  </Step>
+
+  <Step title="Install Dependencies">
+    Run the following command in the Replit Shell:
+
+    ```bash
+    npm install
+    ```
+
+    This installs all dependencies defined in `package.json`.
+  </Step>
+
+  <Step title="Setup Database Schema">
+    Apply database migrations to create all required tables:
+
+    ```bash
+    npm run db:push
+    ```
+
+    This command uses Drizzle ORM to synchronize your database schema with the definitions in `shared/schema.ts`.
+
+    <Warning>
+      Always backup your database before running migrations in production.
+    </Warning>
+  </Step>
+
+  <Step title="Build Production Bundle">
+    Create optimized production builds:
+
+    ```bash
+    npm run build
+    ```
+
+    This command:
+    - Bundles the React client with Vite → `dist/public/`
+    - Compiles the Express server with esbuild → `dist/index.js`
+    - Optimizes assets for production delivery
+  </Step>
+
+  <Step title="Configure Replit Run Command">
+    In `.replit` file, set the run command:
+
+    ```toml
+    run = "npm start"
+    ```
+
+    Or use the Replit interface:
+    1. Click the three dots next to "Run"
+    2. Select "Configure the run button"
+    3. Set command to `npm start`
+  </Step>
+
+  <Step title="Start the Application">
+    Click the **Run** button or execute:
+
+    ```bash
+    npm start
+    ```
+
+    The server will start on port 5000, and Replit will automatically proxy it to your public domain.
+  </Step>
+</Steps>
+
+## Custom Domain Setup
+
+Replit supports custom domains for paid plans:
+
+<Steps>
+  <Step title="Add Custom Domain">
+    1. Open your Repl settings
+    2. Navigate to **Domains**
+    3. Click "Add custom domain"
+    4. Enter your domain (e.g., `app.joip.io`)
+  </Step>
+
+  <Step title="Configure DNS">
+    Add the following DNS records at your domain registrar:
+
+    ```
+    Type: CNAME
+    Name: app (or your subdomain)
+    Value: your-repl.replit.app
+    ```
+  </Step>
+
+  <Step title="Update Environment Variables">
+    Add your custom domain to `REPLIT_DOMAINS`:
+
+    ```bash
+    REPLIT_DOMAINS=app.joip.io,your-repl.replit.app
+    ```
+
+    The application will prioritize `app.joip.io` for authentication callbacks.
+  </Step>
+</Steps>
+
+## Replit-Specific Configuration
+
+### Automatic Environment Detection
+
+The application automatically detects Replit deployment through environment variables:
+
+```typescript
+// server/environmentConfig.ts:26
+if (process.env.REPLIT_DOMAINS) {
+  // Production Replit environment
+  const domains = process.env.REPLIT_DOMAINS.split(',').map(d => d.trim());
+  const primaryDomain = domains.find(d => d === 'app.joip.io') || domains[0];
+}
+```
+
+### OIDC Authentication Flow
+
+When `REPLIT_DOMAINS` is set, the application uses Passport.js with Replit OIDC strategy:
+
+1. User clicks "Login with Replit"
+2. Redirect to Replit's identity service
+3. User authorizes the application
+4. Callback to `/api/callback` with auth code
+5. Exchange code for user profile
+6. Create/update user in database
+7. Establish session with secure cookies
+
+<CodeGroup>
+```bash Production OIDC
+# Required for Replit OIDC
+REPLIT_DOMAINS=app.joip.io,backup.replit.app
+REPL_ID=abc123-xyz789
+ISSUER_URL=https://identity.util.repl.co
+```
+
+```bash Development (Local)
+# OIDC disabled - uses local auth strategy
+# No REPLIT_DOMAINS variable
+NODE_ENV=development
+```
+</CodeGroup>
+
+### Session Management
+
+Replit deployments use secure session cookies:
+
+```javascript
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: true,        // HTTPS only (auto-enabled on Replit)
+    httpOnly: true,      // Prevent XSS attacks
+    maxAge: 30 * 24 * 60 * 60 * 1000  // 30 days
+  }
+}));
+```
+
+## Port Configuration
+
+JOIP always runs on **port 5000** regardless of environment:
+
+```typescript
+// server/environmentConfig.ts:29
+const defaultPort = 5000;
+const port = parseInt(process.env.PORT || String(defaultPort), 10);
+```
+
+Replit automatically proxies port 5000 to your public domain with HTTPS.
+
+<Note>
+  Do not change the port number. Replit's internal proxy expects port 5000.
+</Note>
+
+## Environment Validation
+
+The application validates environment setup on startup:
+
+```typescript
+// server/environmentConfig.ts:89
+export function validateEnvironmentSetup() {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  if (config.isProduction && !process.env.REPL_ID) {
+    errors.push('REPL_ID is required for Replit Auth in production');
+  }
+
+  if (!process.env.DATABASE_URL) {
+    errors.push('DATABASE_URL is required');
+  }
+
+  // ... additional validation
+}
+```
+
+Check startup logs for validation errors or warnings.
+
+## Deployment Checklist
+
+<Steps>
+  <Step title="Pre-Deployment">
+    - [ ] Database provisioned and accessible
+    - [ ] All environment variables configured
+    - [ ] Supabase project created and configured
+    - [ ] API keys obtained (Reddit, OpenRouter, etc.)
+    - [ ] Custom domain DNS configured (if applicable)
+  </Step>
+
+  <Step title="Initial Deployment">
+    - [ ] Dependencies installed (`npm install`)
+    - [ ] Database schema applied (`npm run db:push`)
+    - [ ] Production build created (`npm run build`)
+    - [ ] Environment validation passes
+    - [ ] Application starts successfully
+  </Step>
+
+  <Step title="Post-Deployment">
+    - [ ] Test authentication flow (OIDC)
+    - [ ] Verify database connectivity
+    - [ ] Test file uploads (Supabase Storage)
+    - [ ] Check Reddit API integration
+    - [ ] Test AI caption generation
+    - [ ] Verify custom domain (if configured)
+    - [ ] Monitor application logs for errors
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### OIDC Authentication Fails
+
+**Symptoms:** Login redirects fail or show errors
+
+**Solutions:**
+1. Verify `REPLIT_DOMAINS` includes your actual domain
+2. Check `REPL_ID` is set correctly
+3. Ensure `ISSUER_URL=https://identity.util.repl.co`
+4. Clear browser cookies and try again
+
+### Database Connection Errors
+
+**Symptoms:** "Connection timeout" or "Connection refused" errors
+
+**Solutions:**
+1. Verify `DATABASE_URL` format: `postgresql://user:pass@host:5432/db`
+2. Check database firewall allows Replit IP ranges
+3. Test connection with `npm run db:push`
+4. Review Neon/database provider status page
+
+### File Upload Failures
+
+**Symptoms:** Manual sessions or media vault uploads fail
+
+**Solutions:**
+1. Check Supabase project is not paused
+2. Verify all three Supabase env vars are set
+3. Test storage with `GET /api/storage/status`
+4. Review Supabase Storage bucket permissions
+
+### Application Won't Start
+
+**Symptoms:** Run button fails or crashes immediately
+
+**Solutions:**
+1. Check for TypeScript errors: `npm run check`
+2. Review startup logs in Replit console
+3. Verify all required env vars are set
+4. Rebuild: `npm run build`
+5. Clear Replit cache and reinstall: `rm -rf node_modules && npm install`
+
+## Performance Optimization
+
+### Enable Connection Pooling
+
+For better database performance, configure connection pool settings:
+
+```bash
+DB_POOL_MAX=20
+DB_POOL_MIN=2
+DB_POOL_IDLE=10000
+DB_CONNECT_TIMEOUT=10
+DB_MAX_LIFETIME=3600
+```
+
+See [Database Setup](/guides/deployment/database-setup) for details.
+
+### Monitor Resource Usage
+
+Replit provides built-in monitoring:
+
+1. Open your Repl
+2. Click "Monitoring" in the left sidebar
+3. Review CPU, memory, and network usage
+4. Set up alerts for threshold breaches
+
+### Enable Always On (Paid Plans)
+
+For production deployments, enable "Always On" to prevent automatic shutdown:
+
+1. Open Repl settings
+2. Toggle "Always On"
+3. Your application will run 24/7 without sleeping
+
+## Security Best Practices
+
+<Warning>
+  **Never commit secrets to Git!** Always use Replit Secrets for sensitive data.
+</Warning>
+
+- Use strong `SESSION_SECRET` (32+ random characters)
+- Rotate API keys periodically
+- Enable Replit's "Private" Repl setting for closed-source projects
+- Review Replit audit logs regularly
+- Keep dependencies updated: `npm update`
+- Monitor for security advisories: `npm audit`
+
+## Scaling Considerations
+
+### Database Scaling
+
+Neon supports automatic scaling:
+- Enable autoscaling in Neon dashboard
+- Set compute limits based on traffic
+- Monitor query performance
+- Add read replicas for heavy read workloads
+
+### File Storage Scaling
+
+Supabase Storage scales automatically:
+- Buckets have no hard file limits
+- CDN handles global distribution
+- Monitor storage quota in Supabase dashboard
+- Implement cleanup jobs for old files
+
+### Application Scaling
+
+For high-traffic deployments:
+1. Upgrade to Replit's higher-tier plans
+2. Enable connection pooling (see above)
+3. Implement Redis caching for session data
+4. Consider load balancing across multiple Repls
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Environment Variables" icon="gear" href="/guides/deployment/environment-variables">
+    Complete reference for all environment variables
+  </Card>
+  <Card title="Database Setup" icon="database" href="/guides/deployment/database-setup">
+    PostgreSQL and Neon configuration guide
+  </Card>
+  <Card title="Storage Configuration" icon="cloud" href="/guides/deployment/storage-configuration">
+    Supabase Storage setup and management
+  </Card>
+  <Card title="Architecture" icon="sitemap" href="/architecture/overview">
+    Understanding JOIP's technical architecture
+  </Card>
+</CardGroup>

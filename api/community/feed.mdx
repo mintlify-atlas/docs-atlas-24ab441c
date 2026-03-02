@@ -1,0 +1,335 @@
+---
+title: 'Get Community Feed'
+api: 'GET /api/community'
+description: 'Retrieve community-shared sessions and media with filtering and pagination'
+---
+
+## Overview
+
+The Community Feed endpoint returns a paginated, filterable list of community-shared content, including both sessions and individual media items. Results can be filtered by content type, creator, subreddit, category, tags, and search terms.
+
+## Authentication
+
+This endpoint requires authentication. Include a valid session cookie or authentication header.
+
+## Query Parameters
+
+<ParamField query="contentType" type="string" default="all">
+  Filter by content type:
+  - `all` - Both sessions and media
+  - `sessions` - Only session snapshots
+  - `captions` - Only smart caption media
+  - `babecuts` - Only babecock media
+  - `hypnococks` - Only hypnococks media
+  - `betacensors` - Only beta censor media
+</ParamField>
+
+<ParamField query="sort" type="string" default="new">
+  Sort order:
+  - `new` - Most recent first
+  - `hot` - Engagement-weighted recency (combines likes and recency)
+  - `top` - Highest likes first
+</ParamField>
+
+<ParamField query="search" type="string">
+  Search across titles, captions, creator names, and filenames
+</ParamField>
+
+<ParamField query="creator" type="string">
+  Filter by creator name or email (partial match)
+</ParamField>
+
+<ParamField query="creatorId" type="string">
+  Filter by exact creator user ID
+</ParamField>
+
+<ParamField query="subreddit" type="string">
+  Filter sessions by subreddit name (partial match)
+</ParamField>
+
+<ParamField query="character" type="string">
+  Filter media by character name (partial match)
+</ParamField>
+
+<ParamField query="categoryId" type="number">
+  Filter by category ID
+</ParamField>
+
+<ParamField query="categorySlug" type="string">
+  Filter by category slug
+</ParamField>
+
+<ParamField query="tags" type="string">
+  Comma-separated list of tag slugs to filter by
+  Example: `joi,femdom,hypno`
+</ParamField>
+
+<ParamField query="tagMode" type="string" default="or">
+  Tag matching mode:
+  - `or` - Match any of the specified tags
+  - `and` - Match all specified tags
+</ParamField>
+
+<ParamField query="page" type="number" default="1">
+  Page number (1-indexed)
+</ParamField>
+
+<ParamField query="pageSize" type="number" default="20">
+  Number of items per page (1-100)
+</ParamField>
+
+## Response
+
+<ResponseField name="items" type="array">
+  Array of community content items (sessions and media)
+
+  <Expandable title="Session Item">
+    <ResponseField name="kind" type="string">
+      Always `"session"` for session items
+    </ResponseField>
+    
+    <ResponseField name="id" type="number">
+      Community session ID
+    </ResponseField>
+    
+    <ResponseField name="title" type="string">
+      Session title
+    </ResponseField>
+    
+    <ResponseField name="thumbnail" type="string | null">
+      Thumbnail image URL
+    </ResponseField>
+    
+    <ResponseField name="subreddits" type="string[]">
+      Array of subreddit names used in the session
+    </ResponseField>
+    
+    <ResponseField name="categoryId" type="number | null">
+      Category ID
+    </ResponseField>
+    
+    <ResponseField name="categorySlug" type="string | null">
+      Category slug
+    </ResponseField>
+    
+    <ResponseField name="isManualMode" type="boolean">
+      Whether session is manual (custom uploaded content)
+    </ResponseField>
+    
+    <ResponseField name="isImported" type="boolean">
+      Whether session was imported from external source
+    </ResponseField>
+    
+    <ResponseField name="likeCount" type="number">
+      Number of likes
+    </ResponseField>
+    
+    <ResponseField name="isLikedByUser" type="boolean">
+      Whether current user has liked this session
+    </ResponseField>
+    
+    <ResponseField name="isHidden" type="boolean | undefined">
+      Whether content is hidden (only visible to admins)
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp
+    </ResponseField>
+    
+    <ResponseField name="user" type="object">
+      Creator information
+      <Expandable title="properties">
+        <ResponseField name="id" type="string">
+          User ID
+        </ResponseField>
+        <ResponseField name="firstName" type="string | null">
+          First name
+        </ResponseField>
+        <ResponseField name="lastName" type="string | null">
+          Last name
+        </ResponseField>
+        <ResponseField name="email" type="string">
+          Email address
+        </ResponseField>
+        <ResponseField name="profileImageUrl" type="string | null">
+          Profile image URL
+        </ResponseField>
+        <ResponseField name="role" type="string">
+          User role
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+
+  <Expandable title="Media Item">
+    <ResponseField name="kind" type="string">
+      Always `"media"` for media items
+    </ResponseField>
+    
+    <ResponseField name="id" type="number">
+      Community media ID
+    </ResponseField>
+    
+    <ResponseField name="originalName" type="string">
+      Original filename
+    </ResponseField>
+    
+    <ResponseField name="fileUrl" type="string">
+      Media file URL
+    </ResponseField>
+    
+    <ResponseField name="source" type="string">
+      Source type: `smart-caption`, `babecock`, `hypnococks`, `betacensor`
+    </ResponseField>
+    
+    <ResponseField name="caption" type="string | null">
+      Caption text
+    </ResponseField>
+    
+    <ResponseField name="characterName" type="string | null">
+      Character name (if applicable)
+    </ResponseField>
+    
+    <ResponseField name="likeCount" type="number">
+      Number of likes
+    </ResponseField>
+    
+    <ResponseField name="isLikedByUser" type="boolean">
+      Whether current user has liked this media
+    </ResponseField>
+    
+    <ResponseField name="isHidden" type="boolean | undefined">
+      Whether content is hidden (only visible to admins)
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp
+    </ResponseField>
+    
+    <ResponseField name="user" type="object">
+      Creator information (same structure as session user)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="total" type="number">
+  Total number of items matching the filter criteria
+</ResponseField>
+
+<ResponseField name="page" type="number">
+  Current page number
+</ResponseField>
+
+<ResponseField name="pageSize" type="number">
+  Items per page
+</ResponseField>
+
+<ResponseField name="totalPages" type="number">
+  Total number of pages
+</ResponseField>
+
+## Examples
+
+### Get Recent Sessions
+
+```bash
+curl -X GET "https://app.joip.io/api/community?contentType=sessions&sort=new&page=1&pageSize=20" \
+  -H "Cookie: session=..." \
+  -H "Accept: application/json"
+```
+
+### Search for Content
+
+```bash
+curl -X GET "https://app.joip.io/api/community?search=femdom&contentType=all" \
+  -H "Cookie: session=..." \
+  -H "Accept: application/json"
+```
+
+### Filter by Creator and Category
+
+```bash
+curl -X GET "https://app.joip.io/api/community?creator=username&categorySlug=joi&sort=hot" \
+  -H "Cookie: session=..." \
+  -H "Accept: application/json"
+```
+
+### Filter by Multiple Tags (AND mode)
+
+```bash
+curl -X GET "https://app.joip.io/api/community?tags=joi,femdom,hypno&tagMode=and" \
+  -H "Cookie: session=..." \
+  -H "Accept: application/json"
+```
+
+### Get Top Babecock Media
+
+```bash
+curl -X GET "https://app.joip.io/api/community?contentType=babecuts&sort=top&pageSize=50" \
+  -H "Cookie: session=..." \
+  -H "Accept: application/json"
+```
+
+## Response Example
+
+```json
+{
+  "items": [
+    {
+      "kind": "session",
+      "id": 123,
+      "title": "Hypno Compilation",
+      "thumbnail": "https://example.com/thumb.jpg",
+      "subreddits": ["hypnohub", "femdom"],
+      "categoryId": 5,
+      "categorySlug": "hypno",
+      "isManualMode": false,
+      "isImported": false,
+      "likeCount": 42,
+      "isLikedByUser": true,
+      "createdAt": "2025-03-01T12:00:00.000Z",
+      "user": {
+        "id": "user123",
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "email": "jane@example.com",
+        "profileImageUrl": "https://example.com/profile.jpg",
+        "role": "user"
+      }
+    },
+    {
+      "kind": "media",
+      "id": 456,
+      "originalName": "caption_001.jpg",
+      "fileUrl": "https://storage.example.com/media.jpg",
+      "source": "smart-caption",
+      "caption": "This is a sample caption",
+      "characterName": null,
+      "likeCount": 15,
+      "isLikedByUser": false,
+      "createdAt": "2025-03-01T11:30:00.000Z",
+      "user": {
+        "id": "user456",
+        "firstName": "John",
+        "lastName": "Smith",
+        "email": "john@example.com",
+        "profileImageUrl": null,
+        "role": "user"
+      }
+    }
+  ],
+  "total": 150,
+  "page": 1,
+  "pageSize": 20,
+  "totalPages": 8
+}
+```
+
+## Notes
+
+- The `hot` sort combines likes and recency using the formula: `(likes + 1) / (age_in_hours + 2)^1.5`
+- When `contentType=all`, results merge sessions and media, sorted by `createdAt`
+- Tag filtering applies separately to sessions and media, then merges results
+- Admin users can see `isHidden` content; non-admins see only non-hidden items
+- Character filtering only applies to media items
+- Subreddit filtering only applies to sessions

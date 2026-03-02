@@ -1,122 +1,165 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "JOIP Web Application",
+  "theme": "palm",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#9333ea",
+    "light": "#a855f7",
+    "dark": "#7e22ce"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/MatthewSabia1/Joip-Web-App-2"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/MatthewSabia1/Joip-Web-App-2"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Getting Started",
             "pages": [
-              "index",
+              "introduction",
               "quickstart",
-              "development"
+              "installation",
+              "environment-setup"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Features",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "features/sessions",
+              "features/smart-captions",
+              "features/babecock-studio",
+              "features/media-vault",
+              "features/community"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Content Tools",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "tools/gaslighter",
+              "tools/scroller",
+              "tools/ai-undress",
+              "tools/beta-censor"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "User Management",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "user/authentication",
+              "user/credits-system",
+              "user/referrals",
+              "user/profile"
+            ]
+          },
+          {
+            "group": "Administration",
+            "pages": [
+              "admin/overview",
+              "admin/user-management",
+              "admin/analytics",
+              "admin/telegram-bot"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Overview",
             "pages": [
-              "api-reference/introduction"
+              "api/introduction",
+              "api/authentication",
+              "api/rate-limiting",
+              "api/errors"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Sessions",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/sessions/list",
+              "api/sessions/create",
+              "api/sessions/get",
+              "api/sessions/update",
+              "api/sessions/delete",
+              "api/sessions/share"
+            ]
+          },
+          {
+            "group": "Media",
+            "pages": [
+              "api/media/upload",
+              "api/media/list",
+              "api/media/delete",
+              "api/media/share"
+            ]
+          },
+          {
+            "group": "AI Services",
+            "pages": [
+              "api/ai/generate-caption",
+              "api/ai/smart-captions",
+              "api/ai/undress"
+            ]
+          },
+          {
+            "group": "Community",
+            "pages": [
+              "api/community/feed",
+              "api/community/save-session"
+            ]
+          },
+          {
+            "group": "Reddit Integration",
+            "pages": [
+              "api/reddit/fetch",
+              "api/reddit/validate",
+              "api/reddit/search"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Deployment",
+            "pages": [
+              "guides/deployment/replit",
+              "guides/deployment/environment-variables",
+              "guides/deployment/database-setup",
+              "guides/deployment/storage-configuration"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "guides/development/local-setup",
+              "guides/development/project-structure",
+              "guides/development/database-migrations",
+              "guides/development/testing"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "guides/integrations/reddit-api",
+              "guides/integrations/openai",
+              "guides/integrations/supabase",
+              "guides/integrations/telegram"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

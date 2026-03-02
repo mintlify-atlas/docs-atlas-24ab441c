@@ -1,0 +1,66 @@
+---
+title: "Delete Session"
+api: "DELETE /api/sessions/:id"
+description: "Permanently delete a session and all associated media"
+---
+
+## Authentication
+
+This endpoint requires authentication. Users can only delete sessions they own.
+
+## Path Parameters
+
+<ParamField path="id" type="integer" required>
+  The unique session ID to delete
+</ParamField>
+
+## Response
+
+Returns HTTP 204 No Content on successful deletion.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.joip.io/api/sessions/123" \
+  -H "Cookie: connect.sid=YOUR_SESSION_COOKIE"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 204 - No Content
+// Empty response body on success
+```
+
+```json 400 - Invalid Session ID
+{
+  "message": "Invalid session ID"
+}
+```
+
+```json 403 - Forbidden
+{
+  "message": "You do not have permission to delete this session"
+}
+```
+
+```json 404 - Not Found
+{
+  "message": "Session not found"
+}
+```
+
+```json 500 - Internal Server Error
+{
+  "message": "Failed to delete session"
+}
+```
+</ResponseExample>
+
+## Notes
+
+- This operation is **permanent and irreversible**
+- All associated media items are deleted via database cascade
+- For manual sessions, the entire Supabase storage folder `users/{userId}/manual-sessions/{sessionId}/` is deleted
+- Any share codes associated with the session are also removed
+- Community snapshots (if `shareToCommunity` was enabled) are also deleted
+- Activity is tracked for analytics
+- Consider downloading session data before deletion if you need to preserve it

@@ -1,0 +1,405 @@
+---
+title: 'Smart Captions'
+description: 'Generate AI-powered NSFW captions for your images with customizable themes and styling'
+icon: 'sparkles'
+---
+
+Smart Captions uses AI to generate contextual NSFW captions for your images, with full control over theme, styling, and text appearance.
+
+## Overview
+
+The Smart Captions tool lets you:
+- Upload images or fetch from Reddit
+- Choose from 6 caption themes (JOI, Forced-Bi, Beta, CBT, Cuckold, Custom)
+- Customize text styling (font, size, color, alignment, shadows)
+- Generate, remix, and save captioned images
+- Build a history of recent creations
+
+## Creating Smart Captions
+
+<Steps>
+  <Step title="Upload or Fetch Image">
+    Choose your image source from the left panel:
+    
+    <Tabs>
+      <Tab title="Upload">
+        Add images from your device:
+        - **Drag and drop** into the drop zone
+        - Click **browse** to select files
+        - **Paste from clipboard** (Ctrl/Cmd+V)
+        - Click **Paste from clipboard** button
+        
+        <Warning>
+          Only static images (JPEG, PNG, WebP) are supported. GIFs are blocked.
+        </Warning>
+      </Tab>
+      
+      <Tab title="Reddit">
+        Fetch random images from subreddits:
+        
+        **Subreddit Mode**
+        1. Add subreddits using the chips input (up to 25)
+        2. Click **Fetch Random Image**
+        3. System fetches from your saved list
+        
+        **Search Mode**
+        1. Switch to Search tab
+        2. Enter keywords (e.g., "blonde goddess")
+        3. Click **Search Reddit**
+        4. Random image from search results loads
+        
+        <Note>
+          Reddit images are automatically excluded after use to prevent duplicates.
+        </Note>
+      </Tab>
+    </Tabs>
+    
+    **Image Preview**
+    - Shows resolution and file size overlay
+    - Click **Reset** (X button) to clear and start over
+    - Image metadata appears in bottom corner
+  </Step>
+  
+  <Step title="Select Caption Theme">
+    Choose the AI caption style (Theme panel):
+    
+    <Tabs>
+      <Tab title="JOI / Edging">
+        Mommy/Goddess gives stroke commands:
+        - Edge counts and denial
+        - Making them dumb and drippy
+        - Control and teasing themes
+      </Tab>
+      
+      <Tab title="Forced-Bi">
+        "It's not gay if..." scenarios:
+        - Manipulation tactics
+        - Grindr commands
+        - Rationalization of acts
+      </Tab>
+      
+      <Tab title="Bully / Simp">
+        Mean girl energy:
+        - Instagram stalking
+        - Out of your league
+        - Pay up loser themes
+      </Tab>
+      
+      <Tab title="Pain / CBT">
+        Specific pain commands:
+        - Toilet seats, rulers, punches
+        - Squeezes and counts
+        - Detailed physical instructions
+      </Tab>
+      
+      <Tab title="Cuckold">
+        She talks about HIM:
+        - The bull and BBC
+        - Size comparisons
+        - Cleanup duties
+      </Tab>
+      
+      <Tab title="Custom Prompt">
+        Write your own AI instructions:
+        - Up to 1000 characters
+        - Describe voice, personality, style
+        - Control tone and length
+        
+        <Note>
+          Custom prompts require detailed instructions for best results.
+        </Note>
+      </Tab>
+    </Tabs>
+  </Step>
+  
+  <Step title="Customize Text Styling">
+    Adjust caption appearance (Style panel):
+    
+    **Font Settings**
+    - **Size**: 12-72px slider
+    - **Family**: Inter, Georgia, Arial Black, Impact, Trebuchet, Verdana
+    - **Color**: White, Black, Gold, Red, Blue, Green, Purple, Pink
+    - **Alignment**: Left or Center
+    
+    **Effects**
+    - **Background**: Toggle semi-transparent background
+      - Opacity slider: 0-100%
+      - Improves readability on busy images
+    - **Text Shadow**: Toggle drop shadow for depth
+    
+    <Note>
+      Preview updates live on the canvas as you adjust settings.
+    </Note>
+  </Step>
+  
+  <Step title="Generate Caption">
+    Click **Generate** button (bottom right):
+    
+    1. **Upload Phase**: Image uploads to server (if not from Reddit)
+    2. **AI Generation**: Caption created based on theme (2-5 seconds)
+    3. **Rendering**: Text overlaid on canvas with your styling
+    4. **History Save**: Result saved to Recent Creations (right panel)
+    
+    <Warning>
+      Generation costs **10 credits** and requires an active internet connection.
+    </Warning>
+    
+    **What happens during generation:**
+    - Spinner overlay appears on canvas
+    - Generate button shows loading state
+    - Caption appears when ready
+    - Settings panels stay accessible
+  </Step>
+  
+  <Step title="Review and Export">
+    Once generated, you can:
+    
+    **Edit Caption**
+    - Click caption text area to edit
+    - Manual edits update canvas in real-time
+    - No credit cost for editing
+    
+    **Remix**
+    - Click **Remix** to generate new caption
+    - Uses same image and theme
+    - Costs **10 credits**
+    - Previous caption is replaced
+    
+    **Copy Caption**
+    - Click **Copy Caption** button
+    - Copies caption text to clipboard
+    - Useful for sharing or saving text separately
+    
+    **Download**
+    - Click **Download** button
+    - Saves as PNG with caption baked in
+    - Filename: `smart-caption-{timestamp}.png`
+    
+    **Save to Vault**
+    - Click **Save to Vault**
+    - Stores in Media Vault with metadata
+    - Includes source subreddit if from Reddit
+  </Step>
+</Steps>
+
+## Recent Creations
+
+The right panel shows your recent Smart Caption creations:
+
+**History Features**
+- Last 8 creations displayed as thumbnails
+- Click thumbnail to restore image, caption, and all settings
+- **Remix from history**: Reloads original image (no caption overlay)
+- Persists in browser localStorage
+- Newest creations appear first
+
+<Note>
+  Recent Creations include the raw image (without caption) so you can remix with different themes or styling.
+</Note>
+
+## Step Indicator
+
+Top progress bar guides you through the workflow:
+
+1. **Upload** - Add or fetch your image
+2. **Theme** - Select caption style
+3. **Style** - Customize text appearance
+4. **Generate** - Create your captioned image
+
+## Advanced Features
+
+### Reddit Integration
+
+**Subreddit Management**
+- Add up to 25 subreddits
+- Saved to localStorage for quick access
+- Autocomplete suggestions as you type
+- Remove individual subreddits
+- System validates subreddit existence
+
+**Fetch Behavior**
+- Fetches 40 posts per request
+- Filters for static images only
+- Excludes previously used URLs
+- Random selection from results
+- Retries once on failure
+
+### Custom Prompts
+
+**Writing Effective Prompts**
+- Describe the voice/persona (e.g., "dominant mommy", "bratty goddess")
+- Specify tone (teasing, cruel, playful)
+- Include content focus (body parts, actions, emotions)
+- Mention POV (first person, second person)
+- Suggest caption length (short/punchy vs detailed)
+
+**Example Custom Prompt**
+```
+Write as a cruel goddess who mocks the viewer for being 
+weak. Use second person POV. Focus on humiliation and 
+denial. Keep it under 100 characters. Playful but mean tone.
+```
+
+### Styling Tips
+
+<AccordionGroup>
+  <Accordion title="Readability">
+    For maximum readability:
+    - Use **White text** on dark images
+    - Use **Black text** on light images
+    - Enable **Background** for busy/complex images
+    - Enable **Text Shadow** for extra contrast
+    - Set background opacity to 40-60%
+  </Accordion>
+  
+  <Accordion title="Aesthetic Choices">
+    Match style to content:
+    - **Impact/Arial Black**: Bold, attention-grabbing (memes)
+    - **Georgia**: Elegant, sophisticated (artsy images)
+    - **Inter**: Clean, modern (default choice)
+    - **Gold color**: Luxurious, dominant energy
+    - **Pink/Purple**: Playful, bratty themes
+  </Accordion>
+  
+  <Accordion title="Layout">
+    Text placement strategy:
+    - **Left align**: Better for longer captions
+    - **Center align**: Better for short captions
+    - Bottom placement: Classic meme style
+    - Larger font (48-72px): Short, punchy captions
+    - Smaller font (18-32px): Detailed, multi-line captions
+  </Accordion>
+</AccordionGroup>
+
+## Workflow Examples
+
+<Tabs>
+  <Tab title="Quick Caption">
+    Fastest workflow for rapid creation:
+    
+    1. Click **Fetch Random Image** (Reddit)
+    2. Select theme from dropdown (JOI default)
+    3. Click **Generate**
+    4. Click **Download** or **Save to Vault**
+    5. Click **Reset** to start next caption
+    
+    Time: ~10 seconds per caption
+  </Tab>
+  
+  <Tab title="Custom Upload">
+    For specific images:
+    
+    1. Drag your image into upload zone
+    2. Review image metadata
+    3. Choose theme (or write custom prompt)
+    4. Adjust text styling to match image
+    5. Generate and review
+    6. Edit caption text if needed
+    7. Export or save
+    
+    Time: ~30-60 seconds per caption
+  </Tab>
+  
+  <Tab title="Remix Session">
+    Exploring variations:
+    
+    1. Upload image (or fetch from Reddit)
+    2. Generate with first theme (e.g., JOI)
+    3. Click **Remix** 2-3 times for variations
+    4. Switch to different theme (e.g., Forced-Bi)
+    5. Generate and compare
+    6. Save best versions to vault
+    
+    Time: ~2-3 minutes for 5-6 variations
+  </Tab>
+</Tabs>
+
+## Limitations
+
+<Warning>
+  **File Restrictions**
+  - Static images only (JPEG, PNG, WebP)
+  - GIFs are not supported
+  - Maximum 20MB file size for AI processing
+  - Maximum 100MB for upload
+</Warning>
+
+<Warning>
+  **AI Generation**
+  - Requires internet connection
+  - 2-5 second generation time
+  - API failures fall back to themed captions
+  - Custom prompts may produce unexpected results
+  - SSRF protection blocks localhost/private IPs
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Generation fails">
+    **Common causes:**
+    - Insufficient credits (need 10 credits)
+    - File too large (>20MB)
+    - Invalid file format (must be static image)
+    - Network connection lost
+    - API service temporarily unavailable
+    
+    **Solutions:**
+    - Purchase more credits
+    - Compress image before upload
+    - Convert GIFs to static frames
+    - Check internet connection
+    - Try again in a few minutes
+  </Accordion>
+  
+  <Accordion title="Fetch from Reddit fails">
+    **Common causes:**
+    - Invalid subreddit name
+    - Subreddit has no images
+    - Reddit API rate limit
+    - Network timeout
+    
+    **Solutions:**
+    - Verify subreddit exists and is public
+    - Add more varied subreddits
+    - Wait 30 seconds and retry
+    - Switch to Upload mode temporarily
+  </Accordion>
+  
+  <Accordion title="Caption text cut off">
+    **Causes:**
+    - Caption too long for image dimensions
+    - Font size too large
+    
+    **Solutions:**
+    - Reduce font size
+    - Manually edit caption to be shorter
+    - Use left alignment for long captions
+    - Enable text wrapping in styles
+  </Accordion>
+  
+  <Accordion title="Can't paste from clipboard">
+    **Causes:**
+    - Browser clipboard permissions denied
+    - No image in clipboard
+    
+    **Solutions:**
+    - Allow clipboard access when prompted
+    - Copy an image before pasting
+    - Use traditional drag/drop or browse instead
+  </Accordion>
+</AccordionGroup>
+
+## Integration with Other Features
+
+Smart Captions integrates with:
+
+- **Media Vault**: Save captions directly to your vault
+- **Community**: Share captioned images (via Media Vault sharing)
+- **Sessions**: Captioned images can be used in custom sessions
+
+## Related Features
+
+- [Sessions](/features/sessions) - Create multimedia slideshows
+- [Media Vault](/features/media-vault) - Organize saved captions
+- [Community](/features/community) - Share your best captions

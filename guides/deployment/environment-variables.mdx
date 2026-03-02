@@ -1,0 +1,736 @@
+---
+title: 'Environment Variables'
+description: 'Complete reference for all JOIP environment variables with descriptions and examples'
+icon: 'gear'
+---
+
+## Overview
+
+JOIP Web Application requires various environment variables for database connections, API integrations, authentication, and feature configuration. This page provides a comprehensive reference for all supported variables.
+
+<Note>
+  On Replit, configure all environment variables in the **Secrets** tab (Tools → Secrets). Never commit secrets to version control.
+</Note>
+
+## Required Variables
+
+These variables are essential for the application to function:
+
+### Database Configuration
+
+<ParamField path="DATABASE_URL" type="string" required>
+  PostgreSQL connection string in standard format.
+
+  **Format:** `postgresql://username:password@host:port/database`
+
+  **Example:**
+  ```bash
+  DATABASE_URL="postgresql://joip_user:secure_password@ep-cool-name.us-east-2.aws.neon.tech/joip_production?sslmode=require"
+  ```
+
+  **Neon Example:**
+  ```bash
+  DATABASE_URL="postgresql://joip_user:abc123xyz@ep-cool-name-123456.us-east-2.aws.neon.tech/neondb?sslmode=require"
+  ```
+
+  <Warning>
+    Ensure SSL mode is enabled (`?sslmode=require`) for production databases.
+  </Warning>
+</ParamField>
+
+### Session Security
+
+<ParamField path="SESSION_SECRET" type="string" required>
+  Secret key for signing session cookies. Must be cryptographically secure.
+
+  **Recommended:** 32+ random characters
+
+  **Example:**
+  ```bash
+  SESSION_SECRET="a7f9c2e8b4d1f6e3a9c5b8d2f7e4a1c6b9e2f5a8d3c7b1e4f9a2c5d8e1b4f7a3"
+  ```
+
+  **Generate secure secret:**
+  ```bash
+  node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  ```
+</ParamField>
+
+### Supabase Storage
+
+<ParamField path="SUPABASE_URL" type="string" required>
+  Your Supabase project URL.
+
+  **Format:** `https://[project-id].supabase.co`
+
+  **Example:**
+  ```bash
+  SUPABASE_URL="https://xyzabcdefg123456.supabase.co"
+  ```
+
+  Find this in your Supabase project settings under "API".
+</ParamField>
+
+<ParamField path="SUPABASE_ANON_KEY" type="string" required>
+  Supabase anonymous (public) API key for client-side operations.
+
+  **Example:**
+  ```bash
+  SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  ```
+
+  Find this in Supabase project settings under "API" → "Project API keys".
+</ParamField>
+
+<ParamField path="SUPABASE_SERVICE_KEY" type="string" required>
+  Supabase service role key for server-side storage operations.
+
+  **Example:**
+  ```bash
+  SUPABASE_SERVICE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  ```
+
+  <Warning>
+    **Keep this secret!** Service key has full access to your Supabase project. Never expose in client code.
+  </Warning>
+</ParamField>
+
+### Reddit API Integration
+
+<ParamField path="REDDIT_CLIENT_ID" type="string" required>
+  Reddit application client ID for content fetching.
+
+  **Example:**
+  ```bash
+  REDDIT_CLIENT_ID="AbCdEf123456"
+  ```
+
+  Obtain from: https://www.reddit.com/prefs/apps
+</ParamField>
+
+<ParamField path="REDDIT_CLIENT_SECRET" type="string" required>
+  Reddit application client secret.
+
+  **Example:**
+  ```bash
+  REDDIT_CLIENT_SECRET="xYz789-AbC123_dEf456"
+  ```
+
+  <Note>
+    Create a "script" type application on Reddit for server-side API access.
+  </Note>
+</ParamField>
+
+## Replit OIDC Authentication
+
+Required for production deployment on Replit:
+
+<ParamField path="REPLIT_DOMAINS" type="string">
+  Comma-separated list of domains where your Repl is accessible.
+
+  **Example (single domain):**
+  ```bash
+  REPLIT_DOMAINS="joip-production.replit.app"
+  ```
+
+  **Example (multiple domains):**
+  ```bash
+  REPLIT_DOMAINS="app.joip.io,joip-production.replit.app,joip-backup.replit.app"
+  ```
+
+  **Behavior:**
+  - Application prioritizes `app.joip.io` if present
+  - Falls back to first domain in list
+  - Used for OAuth callback URL generation
+  - Enables Replit OIDC authentication when set
+</ParamField>
+
+<ParamField path="REPL_ID" type="string">
+  Your Replit project ID (automatically populated by Replit).
+
+  **Example:**
+  ```bash
+  REPL_ID="abc123-xyz789-def456"
+  ```
+
+  Required for Replit OIDC authentication in production.
+</ParamField>
+
+<ParamField path="ISSUER_URL" type="string">
+  Replit OIDC issuer URL (standard value).
+
+  **Value:**
+  ```bash
+  ISSUER_URL="https://identity.util.repl.co"
+  ```
+
+  <Note>
+    This value is consistent across all Replit deployments.
+  </Note>
+</ParamField>
+
+## AI Providers
+
+### Caption Generation
+
+At least one AI provider is required for caption generation:
+
+<ParamField path="OPENROUTER_API_KEY" type="string">
+  OpenRouter API key for AI caption generation (primary provider).
+
+  **Example:**
+  ```bash
+  OPENROUTER_API_KEY="sk-or-v1-abc123xyz789..."
+  ```
+
+  **Models used:**
+  - Manual Editor: `google/gemini-2.5-pro` (contextual captions)
+  - Fallback: `google/gemini-2.5-flash-lite`
+  - Smart Captions: `gemini-2.5-flash-lite`
+
+  Obtain from: https://openrouter.ai/
+</ParamField>
+
+<ParamField path="OPENAI_API_KEY" type="string">
+  OpenAI API key (alternative to OpenRouter).
+
+  **Example:**
+  ```bash
+  OPENAI_API_KEY="sk-abc123xyz789..."
+  ```
+
+  Falls back to this provider if OpenRouter fails.
+</ParamField>
+
+### AI Undress (Image Editing)
+
+<ParamField path="XAI_API_KEY" type="string">
+  xAI API key (primary provider for AI Undress feature).
+
+  **Example:**
+  ```bash
+  XAI_API_KEY="xai-abc123xyz789..."
+  ```
+
+  **Model used:** `grok-imagine-image-pro` (via `/v1/images/edits`)
+</ParamField>
+
+<ParamField path="FREEPIK_API_KEY" type="string">
+  Freepik API key (fallback provider for AI Undress).
+
+  **Example:**
+  ```bash
+  FREEPIK_API_KEY="fpk_abc123xyz789..."
+  ```
+
+  **Model used:** Seedream 4.5 Edit
+</ParamField>
+
+<ParamField path="UNDRESS_PRIMARY_PROVIDER" type="enum" default="xai">
+  Primary AI Undress provider selection.
+
+  **Options:** `xai` | `freepik`
+
+  **Example:**
+  ```bash
+  UNDRESS_PRIMARY_PROVIDER="xai"
+  ```
+
+  Defaults to `xai` if not specified.
+</ParamField>
+
+<ParamField path="XAI_UNDRESS_MODEL" type="string" default="grok-imagine-image-pro">
+  Optional xAI model override for AI Undress.
+
+  **Example:**
+  ```bash
+  XAI_UNDRESS_MODEL="grok-imagine-image-pro"
+  ```
+</ParamField>
+
+<ParamField path="REPLICATE_API_TOKEN" type="string">
+  Replicate API token (dormant/legacy backend for AI Undress).
+
+  **Example:**
+  ```bash
+  REPLICATE_API_TOKEN="r8_abc123xyz789..."
+  ```
+
+  <Note>
+    This credential is currently not used in active AI Undress flows.
+  </Note>
+</ParamField>
+
+## Optional Features
+
+### Imgchest Import
+
+<ParamField path="IMGCHEST_API_KEY" type="string">
+  Imgchest API key for importing existing JOIP galleries.
+
+  **Example:**
+  ```bash
+  IMGCHEST_API_KEY="imgchest_abc123xyz789"
+  ```
+
+  Required for "Import JOIP from Imgchest" feature.
+</ParamField>
+
+### Payment Providers
+
+#### PayGate (Credit Cards)
+
+<ParamField path="PAYGATE_MERCHANT_WALLET" type="string">
+  PayGate merchant wallet address for credit card payments.
+
+  **Example:**
+  ```bash
+  PAYGATE_MERCHANT_WALLET="0xABC123..."
+  ```
+</ParamField>
+
+<ParamField path="PAYGATE_CALLBACK_URL" type="string">
+  PayGate callback URL for payment notifications.
+
+  **Example (local dev with ngrok):**
+  ```bash
+  PAYGATE_CALLBACK_URL="https://abc123.ngrok.io/api/payments/callback"
+  ```
+
+  **Production:** Auto-detected from `REPLIT_DOMAINS`
+</ParamField>
+
+#### Telegram Stars
+
+<ParamField path="TELEGRAM_BOT_TOKEN" type="string">
+  Telegram bot token for Telegram Star payments.
+
+  **Example:**
+  ```bash
+  TELEGRAM_BOT_TOKEN="123456:ABC-DEF123456..."
+  ```
+
+  Obtain from: https://t.me/BotFather
+</ParamField>
+
+<ParamField path="TELEGRAM_WEBHOOK_SECRET" type="string">
+  Secret for verifying Telegram webhook signatures.
+
+  **Example:**
+  ```bash
+  TELEGRAM_WEBHOOK_SECRET="your_secure_random_string"
+  ```
+
+  <Warning>
+    Required in production when `TELEGRAM_BOT_TOKEN` is set.
+  </Warning>
+</ParamField>
+
+<ParamField path="TELEGRAM_BOT_USERNAME" type="string" default="OfficialJoipBot">
+  Telegram bot username (without @).
+
+  **Example:**
+  ```bash
+  TELEGRAM_BOT_USERNAME="OfficialJoipBot"
+  ```
+</ParamField>
+
+<ParamField path="TELEGRAM_CHANNEL_ID" type="string">
+  Telegram channel ID for membership features.
+
+  **Example:**
+  ```bash
+  TELEGRAM_CHANNEL_ID="-1001234567890"
+  ```
+</ParamField>
+
+#### Thirdweb (Crypto Checkout)
+
+<ParamField path="THIRDWEB_CLIENT_ID" type="string">
+  Thirdweb client ID for crypto checkout.
+
+  **Example:**
+  ```bash
+  THIRDWEB_CLIENT_ID="abc123xyz789"
+  ```
+</ParamField>
+
+<ParamField path="THIRDWEB_WEBHOOK_SECRET" type="string">
+  Secret for verifying Thirdweb webhook signatures.
+
+  **Example:**
+  ```bash
+  THIRDWEB_WEBHOOK_SECRET="whsec_abc123xyz789"
+  ```
+</ParamField>
+
+<ParamField path="THIRDWEB_SELLER_WALLET" type="string">
+  EVM wallet address for receiving Thirdweb payments.
+
+  **Format:** Must be valid EVM address (0x...)
+
+  **Example:**
+  ```bash
+  THIRDWEB_SELLER_WALLET="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
+  ```
+
+  <Warning>
+    Must be a valid 40-character hexadecimal EVM address.
+  </Warning>
+</ParamField>
+
+#### Payblis
+
+<ParamField path="PAYBLIS_MERCHANT_KEY" type="string">
+  Payblis merchant key.
+
+  **Example:**
+  ```bash
+  PAYBLIS_MERCHANT_KEY="merchant_abc123"
+  ```
+</ParamField>
+
+<ParamField path="PAYBLIS_SECRET_KEY" type="string">
+  Payblis secret key for API authentication.
+
+  **Example:**
+  ```bash
+  PAYBLIS_SECRET_KEY="sk_abc123xyz789"
+  ```
+</ParamField>
+
+<ParamField path="PAYBLIS_SANDBOX" type="boolean" default="auto">
+  Enable Payblis sandbox mode.
+
+  **Values:** `true` | `false`
+
+  **Example:**
+  ```bash
+  PAYBLIS_SANDBOX="false"
+  ```
+
+  Defaults to `true` in development, `false` in production.
+</ParamField>
+
+## Application Settings
+
+<ParamField path="NODE_ENV" type="enum" default="development">
+  Node.js environment mode.
+
+  **Options:** `development` | `production`
+
+  **Example:**
+  ```bash
+  NODE_ENV="production"
+  ```
+
+  **Behavior:**
+  - `development`: Enables detailed error messages, Vite HMR
+  - `production`: Optimized builds, minimal logging
+</ParamField>
+
+<ParamField path="PORT" type="number" default="5000">
+  Server listening port.
+
+  **Example:**
+  ```bash
+  PORT=5000
+  ```
+
+  <Note>
+    Always use port 5000 on Replit. Changing this may break deployment.
+  </Note>
+</ParamField>
+
+<ParamField path="JOIP_INTERNAL_PORT" type="number">
+  Optional override for internal localhost callbacks/proxy calls.
+
+  **Example:**
+  ```bash
+  JOIP_INTERNAL_PORT=5000
+  ```
+
+  Defaults to `PORT` when omitted.
+</ParamField>
+
+<ParamField path="UPLOAD_DIR" type="string" default="./uploads">
+  Local directory for file uploads (legacy).
+
+  **Example:**
+  ```bash
+  UPLOAD_DIR="./uploads"
+  ```
+
+  <Note>
+    All uploads now use Supabase Storage. This setting is mostly unused.
+  </Note>
+</ParamField>
+
+<ParamField path="HOST_URL" type="string">
+  Explicit host URL override.
+
+  **Example:**
+  ```bash
+  HOST_URL="https://app.joip.io"
+  ```
+
+  Auto-detected from `REPLIT_DOMAINS` in production.
+</ParamField>
+
+## Database Connection Tuning
+
+Optional settings for optimizing PostgreSQL connection pooling:
+
+<ParamField path="DB_POOL_MAX" type="number" default="20">
+  Maximum number of database connections in pool.
+
+  **Example:**
+  ```bash
+  DB_POOL_MAX=20
+  ```
+</ParamField>
+
+<ParamField path="DB_POOL_MIN" type="number" default="2">
+  Minimum number of database connections in pool.
+
+  **Example:**
+  ```bash
+  DB_POOL_MIN=2
+  ```
+</ParamField>
+
+<ParamField path="DB_POOL_IDLE" type="number" default="10000">
+  Idle timeout in milliseconds before closing connection.
+
+  **Example:**
+  ```bash
+  DB_POOL_IDLE=10000
+  ```
+</ParamField>
+
+<ParamField path="DB_CONNECT_TIMEOUT" type="number" default="10">
+  Connection timeout in seconds.
+
+  **Example:**
+  ```bash
+  DB_CONNECT_TIMEOUT=10
+  ```
+</ParamField>
+
+<ParamField path="DB_MAX_LIFETIME" type="number" default="3600">
+  Maximum connection lifetime in seconds.
+
+  **Example:**
+  ```bash
+  DB_MAX_LIFETIME=3600
+  ```
+</ParamField>
+
+<ParamField path="DB_STATEMENT_TIMEOUT" type="number" default="30000">
+  Statement timeout in milliseconds.
+
+  **Example:**
+  ```bash
+  DB_STATEMENT_TIMEOUT=30000
+  ```
+</ParamField>
+
+<ParamField path="DB_QUERY_TIMEOUT" type="number" default="20000">
+  Query timeout in milliseconds.
+
+  **Example:**
+  ```bash
+  DB_QUERY_TIMEOUT=20000
+  ```
+</ParamField>
+
+## Logging Configuration
+
+<ParamField path="LOG_LEVEL" type="enum" default="info">
+  Application logging level.
+
+  **Options:** `error` | `warn` | `info` | `debug`
+
+  **Example:**
+  ```bash
+  LOG_LEVEL="info"
+  ```
+
+  **Levels:**
+  - `error`: Only critical errors
+  - `warn`: Errors and warnings
+  - `info`: Normal operation info (recommended for production)
+  - `debug`: Detailed debugging information
+</ParamField>
+
+## Environment Validation
+
+The application validates all environment variables on startup (`server/environmentConfig.ts:89`):
+
+```typescript
+export function validateEnvironmentSetup() {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Required variables
+  if (!process.env.DATABASE_URL) {
+    errors.push('DATABASE_URL is required');
+  }
+
+  if (!process.env.SUPABASE_URL) {
+    errors.push('SUPABASE_URL is required');
+  }
+
+  // ... additional validation
+}
+```
+
+**Startup Behavior:**
+- **Errors:** Application may fail to start or have limited functionality
+- **Warnings:** Application starts but some features are disabled
+
+Check console logs on startup for validation results.
+
+## Configuration Examples
+
+<CodeGroup>
+```bash Production (Replit)
+# Required
+DATABASE_URL="postgresql://user:pass@host.neon.tech/db?sslmode=require"
+SESSION_SECRET="a7f9c2e8b4d1f6e3a9c5b8d2f7e4a1c6"
+SUPABASE_URL="https://xyz123.supabase.co"
+SUPABASE_ANON_KEY="eyJhbGciOi..."
+SUPABASE_SERVICE_KEY="eyJhbGciOi..."
+REDDIT_CLIENT_ID="AbCdEf123"
+REDDIT_CLIENT_SECRET="xYz789-AbC123"
+
+# Replit OIDC
+REPLIT_DOMAINS="app.joip.io,joip.replit.app"
+REPL_ID="abc123-xyz789"
+ISSUER_URL="https://identity.util.repl.co"
+
+# AI Providers
+OPENROUTER_API_KEY="sk-or-v1-..."
+XAI_API_KEY="xai-..."
+FREEPIK_API_KEY="fpk-..."
+
+# Application
+NODE_ENV="production"
+PORT=5000
+```
+
+```bash Development (Local)
+# Required
+DATABASE_URL="postgresql://localhost:5432/joip_dev"
+SESSION_SECRET="dev-secret-change-in-production"
+SUPABASE_URL="https://xyz123.supabase.co"
+SUPABASE_ANON_KEY="eyJhbGciOi..."
+SUPABASE_SERVICE_KEY="eyJhbGciOi..."
+REDDIT_CLIENT_ID="AbCdEf123"
+REDDIT_CLIENT_SECRET="xYz789-AbC123"
+
+# AI Providers (optional for testing)
+OPENROUTER_API_KEY="sk-or-v1-..."
+
+# Application
+NODE_ENV="development"
+PORT=5000
+
+# No REPLIT_DOMAINS - uses local auth
+```
+
+```bash Minimal (Testing)
+# Bare minimum for testing
+DATABASE_URL="postgresql://localhost:5432/joip_test"
+SESSION_SECRET="test-secret"
+SUPABASE_URL="https://xyz123.supabase.co"
+SUPABASE_ANON_KEY="eyJhbGciOi..."
+SUPABASE_SERVICE_KEY="eyJhbGciOi..."
+REDDIT_CLIENT_ID="test"
+REDDIT_CLIENT_SECRET="test"
+
+# Warnings expected for missing optional features
+```
+</CodeGroup>
+
+## Security Best Practices
+
+<Warning>
+  **Critical Security Rules:**
+  - Never commit `.env` files to Git
+  - Use Replit Secrets for all sensitive values
+  - Rotate secrets periodically (every 90 days)
+  - Use different secrets for dev/staging/prod
+  - Audit access to Replit Secrets regularly
+</Warning>
+
+### Secret Generation
+
+Generate cryptographically secure secrets:
+
+```bash
+# Session secret (32 bytes)
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# Webhook secret (16 bytes)
+node -e "console.log(require('crypto').randomBytes(16).toString('hex'))"
+
+# UUID v4
+node -e "console.log(require('crypto').randomUUID())"
+```
+
+### Environment Files
+
+Never track environment files in Git:
+
+```bash
+# .gitignore
+.env
+.env.local
+.env.production
+.env.development
+*.env
+```
+
+## Troubleshooting
+
+### Missing Required Variables
+
+**Symptom:** Application fails to start with validation errors
+
+**Solution:**
+1. Check startup logs for specific missing variables
+2. Add all required variables to Replit Secrets
+3. Restart the application
+
+### Invalid Variable Format
+
+**Symptom:** "Invalid format" warnings on startup
+
+**Solution:**
+1. Verify variable format matches documentation
+2. Check for extra spaces or quotes
+3. Validate URLs include protocol (`https://`)
+
+### Features Not Working
+
+**Symptom:** Specific features disabled or failing
+
+**Solution:**
+1. Check for related warnings in startup logs
+2. Verify optional variables are set correctly
+3. Test connectivity to external services
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Deploy on Replit" icon="rocket" href="/guides/deployment/replit">
+    Complete Replit deployment guide
+  </Card>
+  <Card title="Database Setup" icon="database" href="/guides/deployment/database-setup">
+    Configure PostgreSQL and Neon
+  </Card>
+  <Card title="Storage Configuration" icon="cloud" href="/guides/deployment/storage-configuration">
+    Setup Supabase Storage
+  </Card>
+</CardGroup>

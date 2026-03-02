@@ -1,0 +1,722 @@
+---
+title: Supabase Storage Integration
+description: Configure Supabase for file uploads and media storage
+icon: database
+---
+
+JOIP uses Supabase Storage for all file uploads including manual session images, user media vaults, and community-shared content.
+
+## Overview
+
+Supabase Storage provides:
+- **Public buckets** for user-uploaded media
+- **Automatic CDN** for fast global delivery
+- **File management** with folder organization
+- **100MB per file** upload limit (configurable)
+- **Unlimited storage** (pay-as-you-go)
+
+<Note>
+  Supabase is **required** for manual sessions and media vault features. Standard (Reddit-based) sessions work without it.
+</Note>
+
+## Prerequisites
+
+- Supabase account at [supabase.com](https://supabase.com)
+- Active project with storage enabled
+- Project URL and API keys
+
+## Setup Steps
+
+<Steps>
+  <Step title="Create Supabase Project">
+    1. Sign up at [supabase.com](https://supabase.com)
+    2. Click "New Project"
+    3. Choose organization and name
+    4. Select region (choose closest to users)
+    5. Set database password (save this!)
+    6. Click "Create new project"
+
+    <Note>
+      Project creation takes 1-2 minutes. The dashboard will show "Setting up project..." during initialization.
+    </Note>
+  </Step>
+
+  <Step title="Get API Credentials">
+    Once your project is ready:
+
+    1. Navigate to **Settings** → **API**
+    2. Find and copy these values:
+
+    <CardGroup cols={2}>
+      <Card title="Project URL" icon="link">
+        Format: `https://xxxxx.supabase.co`
+        
+        Found under "Project URL"
+      </Card>
+
+      <Card title="Anon Key" icon="key">
+        Long string starting with `eyJ...`
+        
+        Found under "Project API keys" → "anon public"
+      </Card>
+
+      <Card title="Service Role Key" icon="shield-check">
+        Long string starting with `eyJ...`
+        
+        Found under "Project API keys" → "service_role"
+      </Card>
+    </CardGroup>
+
+    <Warning>
+      The **service_role** key has admin privileges. Never expose it to clients or commit to version control.
+    </Warning>
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    Add credentials to `.env`:
+
+    <CodeGroup>
+    ```bash .env
+    SUPABASE_URL=https://your-project.supabase.co
+    SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    ```
+    </CodeGroup>
+
+    <Note>
+      All three variables are **required**. The server will throw an error on startup if any are missing.
+    </Note>
+  </Step>
+
+  <Step title="Initialize Storage Buckets">
+    JOIP automatically creates required buckets on first startup:
+
+    - **user-media**: Personal uploads and manual sessions
+    - **general**: Community-shared content
+
+    Check server logs:
+
+    <CodeGroup>
+    ```bash Success
+    [supabase] Created user-media bucket successfully
+    [supabase] Created general bucket successfully
+    [supabase] Storage buckets initialized successfully
+    ```
+
+    ```bash Already Exists
+    [supabase] Storage buckets initialized successfully
+    # (Buckets already exist, skipped creation)
+    ```
+    </CodeGroup>
+
+    <Warning>
+      If initialization fails, JOIP continues to run but storage features will be unavailable. Check your Supabase project is active (not paused).
+    </Warning>
+  </Step>
+
+  <Step title="Verify Storage Configuration">
+    Test storage connectivity:
+
+    <CodeGroup>
+    ```bash cURL Test
+    curl http://localhost:5000/api/storage/status
+    ```
+
+    ```json Response (Success)
+    {
+      "configured": true,
+      "url": "https://your-project.supabase.co",
+      "hasAnonKey": true,
+      "hasServiceKey": true,
+      "connectionTest": "success"
+    }
+    ```
+
+    ```json Response (Failure)
+    {
+      "configured": false,
+      "error": "STORAGE_UNREACHABLE",
+      "message": "Supabase project is paused or unreachable"
+    }
+    ```
+    </CodeGroup>
+
+    The status endpoint performs a tiny upload/delete test to verify connectivity.
+  </Step>
+</Steps>
+
+## Implementation Details
+
+### Bucket Configuration
+
+JOIP creates two public buckets with these settings:
+
+<Tabs>
+  <Tab title="user-media">
+    **Purpose**: User-specific uploads and manual sessions
+
+    **Settings**:
+    - Public access: Yes
+    - Allowed MIME types: `image/*`, `video/mp4`, `video/webm`
+    - File size limit: Unlimited (enforced in application)
+    - Folder structure: `users/{userId}/{subfolder}/`
+
+    **Usage**:
+    - Manual session images: `users/{userId}/manual-sessions/{sessionId}/`
+    - Media vault: `users/{userId}/media-vault/`
+    - Profile pictures: `users/{userId}/profile/`
+  </Tab>
+
+  <Tab title="general">
+    **Purpose**: Community-shared content
+
+    **Settings**:
+    - Public access: Yes
+    - Allowed MIME types: `image/jpeg`, `image/png`, `image/gif`, `image/webp`
+    - File size limit: Unlimited
+    - Folder structure: Flat (timestamp-based filenames)
+
+    **Usage**:
+    - Community session snapshots
+    - Shared media items
+    - Public thumbnails
+  </Tab>
+</Tabs>
+
+### File Upload Flow
+
+<CodeGroup>
+```typescript Upload Implementation
+import { uploadFile } from './supabase';
+
+// Upload to user-media bucket
+const { url, path, error } = await uploadFile(
+  fileBuffer,                    // Buffer | Uint8Array | File
+  'example.jpg',                 // Original filename
+  'USER_MEDIA',                  // Bucket: 'USER_MEDIA' | 'GENERAL'
+  userId,                        // User ID for folder organization
+  'image/jpeg',                  // Content-Type
+  'manual-sessions/session-123'  // Optional subfolder
+);
+
+if (error) {
+  console.error('Upload failed:', error);
+} else {
+  console.log('File uploaded:', url);
+  // url: https://your-project.supabase.co/storage/v1/object/public/user-media/users/{userId}/manual-sessions/session-123/timestamp-uniqueId-example.jpg
+  // path: users/{userId}/manual-sessions/session-123/timestamp-uniqueId-example.jpg
+}
+```
+</CodeGroup>
+
+### File Naming Convention
+
+JOIP generates unique filenames to prevent collisions:
+
+```
+{timestamp}-{uniqueId}-{sanitizedFilename}
+
+Example:
+1678901234567-a1b2c3d4e5f-my_image.jpg
+├─ timestamp: 1678901234567 (milliseconds since epoch)
+├─ uniqueId: a1b2c3d4e5f (random alphanumeric)
+└─ filename: my_image.jpg (sanitized, special chars → underscores)
+```
+
+<Note>
+  Filenames are sanitized to remove special characters and prevent path traversal attacks.
+</Note>
+
+### Folder Organization
+
+<CodeGroup>
+```typescript Folder Structure
+user-media/
+├── users/
+│   ├── user-123/
+│   │   ├── manual-sessions/
+│   │   │   ├── session-456/
+│   │   │   │   ├── 1678901234567-abc123-img1.jpg
+│   │   │   │   └── 1678901234568-def456-img2.jpg
+│   │   │   └── session-789/
+│   │   │       └── ...
+│   │   ├── media-vault/
+│   │   │   ├── 1678901234569-ghi789-vacation.jpg
+│   │   │   └── ...
+│   │   └── profile/
+│   │       └── avatar.jpg
+│   └── user-456/
+│       └── ...
+
+general/
+├── 1678901234570-jkl012-community.jpg
+├── 1678901234571-mno345-shared.png
+└── ...
+```
+</CodeGroup>
+
+## API Usage Examples
+
+### Upload File
+
+<CodeGroup>
+```typescript Server-Side Upload
+import { uploadFile, STORAGE_BUCKETS } from './supabase';
+import { getUserId } from './authUtils';
+
+// From Express route with multer
+app.post('/api/upload', upload.single('file'), async (req, res) => {
+  const userId = getUserId(req);
+  const file = req.file;
+  
+  if (!file) {
+    return res.status(400).json({ error: 'No file provided' });
+  }
+  
+  // Upload to user-media bucket
+  const result = await uploadFile(
+    file.buffer,
+    file.originalname,
+    'USER_MEDIA',
+    userId,
+    file.mimetype,
+    'media-vault'  // subfolder
+  );
+  
+  if (result.error) {
+    return res.status(500).json({ error: result.error });
+  }
+  
+  res.json({
+    url: result.url,
+    path: result.path
+  });
+});
+```
+</CodeGroup>
+
+### Delete File
+
+<CodeGroup>
+```typescript Delete by Path
+import { deleteFile } from './supabase';
+
+const { success, error } = await deleteFile(
+  'users/user-123/manual-sessions/session-456/image.jpg',
+  'USER_MEDIA'
+);
+
+if (success) {
+  console.log('File deleted successfully');
+} else {
+  console.error('Delete failed:', error);
+}
+```
+</CodeGroup>
+
+### Delete Folder
+
+<CodeGroup>
+```typescript Delete Entire Session
+import { deleteFolder } from './supabase';
+
+// Delete all images in a manual session
+const { success, error } = await deleteFolder(
+  'users/user-123/manual-sessions/session-456',
+  'USER_MEDIA'
+);
+
+// Deletes all files in the folder
+```
+</CodeGroup>
+
+### List Files
+
+<CodeGroup>
+```typescript List User Files
+import { listFiles } from './supabase';
+
+const { files, error } = await listFiles(
+  'USER_MEDIA',
+  'user-123',
+  'media-vault'  // optional subfolder
+);
+
+if (!error) {
+  files.forEach(file => {
+    console.log(file.name, file.created_at, file.metadata);
+  });
+}
+```
+</CodeGroup>
+
+### Extract File Path from URL
+
+<CodeGroup>
+```typescript Path Extraction
+import { extractFilePathFromUrl } from './supabase';
+
+const url = 'https://abc.supabase.co/storage/v1/object/public/user-media/users/123/file.jpg';
+const path = extractFilePathFromUrl(url);
+
+console.log(path);
+// Output: users/123/file.jpg
+
+// Use this path for deletion
+await deleteFile(path, 'USER_MEDIA');
+```
+</CodeGroup>
+
+## Error Handling
+
+### Storage Error Codes
+
+JOIP returns specific error codes for storage operations:
+
+| Code | Description | HTTP Status |
+|------|-------------|-------------|
+| `STORAGE_CONFIG_ERROR` | Missing environment variables | 503 |
+| `STORAGE_UNREACHABLE` | Cannot connect to Supabase | 503 |
+| `STORAGE_PREFLIGHT_FAILED` | Bucket test upload failed | 503 |
+| `UPLOAD_FAILED` | File upload error | 500 |
+
+<CodeGroup>
+```typescript Error Response Example
+{
+  "error": "Manual session creation requires storage",
+  "code": "STORAGE_UNREACHABLE",
+  "details": "Supabase project is paused or unreachable"
+}
+```
+</CodeGroup>
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="503: STORAGE_UNREACHABLE">
+    **Cause**: Supabase project is paused or network issue
+
+    **Solution**:
+    1. Check project status at [app.supabase.com](https://app.supabase.com)
+    2. Resume paused project (free tier auto-pauses after 7 days inactivity)
+    3. Verify `SUPABASE_URL` is correct
+    4. Check firewall/network connectivity
+    5. Test with `/api/storage/status` endpoint
+  </Accordion>
+
+  <Accordion title="413: Payload Too Large">
+    **Cause**: File exceeds 100MB limit
+
+    **Solution**:
+    - JOIP enforces 100MB per file in application code
+    - Compress images before upload
+    - For videos, consider using external hosting
+    - Increase limit in `server/upload.ts` if needed
+  </Accordion>
+
+  <Accordion title="401: Unauthorized">
+    **Cause**: Invalid API keys
+
+    **Solution**:
+    - Verify `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_KEY`
+    - Check for spaces or quotes in `.env`
+    - Regenerate keys in Supabase dashboard if compromised
+    - Ensure project URL matches keys
+  </Accordion>
+
+  <Accordion title="404: Bucket Not Found">
+    **Cause**: Buckets not created during initialization
+
+    **Solution**:
+    - Restart server to trigger bucket creation
+    - Manually create buckets via Supabase dashboard:
+      - Storage → Create Bucket → "user-media" (public)
+      - Storage → Create Bucket → "general" (public)
+    - Check server logs for initialization errors
+  </Accordion>
+</AccordionGroup>
+
+## Storage Management
+
+### Monitor Usage
+
+Check storage usage in Supabase dashboard:
+
+1. Navigate to **Storage** → **Usage**
+2. View total storage consumed
+3. See breakdown by bucket
+4. Monitor bandwidth usage
+
+<Note>
+  Free tier includes **1GB storage** and **2GB bandwidth** per month. Upgrade to Pro for 100GB storage.
+</Note>
+
+### Automatic Cleanup
+
+JOIP automatically cleans up orphaned files:
+
+- **Manual sessions**: Deletes entire folder when session deleted
+- **Community content**: Preserves files in `general` bucket
+- **User media**: Files remain until explicitly deleted by user
+
+<CodeGroup>
+```typescript Cleanup on Session Delete
+// In deleteSession function
+if (session.isManualMode && !session.isImported) {
+  const folderPath = `users/${session.userId}/manual-sessions/${sessionId}`;
+  await deleteFolder(folderPath, 'USER_MEDIA');
+  logger.info('Cleaned up manual session folder', { sessionId, folderPath });
+}
+```
+</CodeGroup>
+
+### Security & Access Control
+
+Supabase buckets use Row Level Security (RLS):
+
+<Tabs>
+  <Tab title="Public Access (Current)">
+    Both buckets are configured as **public**:
+    - Anyone with URL can view files
+    - Server-side code controls uploads
+    - Client validation prevents abuse
+
+    <Note>
+      This is appropriate for an adult content app where all users are authenticated.
+    </Note>
+  </Tab>
+
+  <Tab title="Private Access (Optional)">
+    To enable private buckets with signed URLs:
+
+    1. Change bucket to private in Supabase dashboard
+    2. Use `getSignedUrl()` for temporary access
+    3. Set expiration (e.g., 1 hour)
+
+    <CodeGroup>
+    ```typescript Signed URLs
+    import { getSignedUrl } from './supabase';
+
+    const { url, error } = await getSignedUrl(
+      'users/123/private.jpg',
+      'USER_MEDIA',
+      3600  // 1 hour
+    );
+
+    // URL expires after 1 hour
+    ```
+    </CodeGroup>
+  </Tab>
+</Tabs>
+
+## Performance Optimization
+
+### CDN & Caching
+
+Supabase Storage includes automatic CDN:
+- Files served from nearest edge location
+- HTTP caching headers set automatically
+- No additional configuration needed
+
+### Image Optimization
+
+For better performance, optimize images before upload:
+
+<CodeGroup>
+```typescript Server-Side Compression
+import sharp from 'sharp';
+
+async function compressImage(buffer: Buffer): Promise<Buffer> {
+  return await sharp(buffer)
+    .resize(2000, 2000, { // Max dimensions
+      fit: 'inside',
+      withoutEnlargement: true
+    })
+    .jpeg({ quality: 85 }) // Adjust quality
+    .toBuffer();
+}
+
+// Use in upload route
+const compressed = await compressImage(file.buffer);
+await uploadFile(compressed, file.originalname, ...);
+```
+</CodeGroup>
+
+### Batch Operations
+
+For multiple files, upload in parallel:
+
+<CodeGroup>
+```typescript Parallel Uploads
+const uploads = files.map(file => 
+  uploadFile(
+    file.buffer,
+    file.originalname,
+    'USER_MEDIA',
+    userId,
+    file.mimetype,
+    subfolder
+  )
+);
+
+const results = await Promise.all(uploads);
+
+// Check for errors
+const failed = results.filter(r => r.error);
+if (failed.length > 0) {
+  console.error('Some uploads failed:', failed);
+}
+```
+</CodeGroup>
+
+## Migration Guide
+
+### From Local Storage to Supabase
+
+If migrating from local `uploads/` directory:
+
+<Steps>
+  <Step title="Setup Supabase">
+    Follow the setup steps above to create project and configure credentials.
+  </Step>
+
+  <Step title="Upload Existing Files">
+    <CodeGroup>
+    ```typescript Migration Script
+    import fs from 'fs';
+    import path from 'path';
+    import { uploadFile } from './server/supabase';
+
+    async function migrateLocalFiles() {
+      const uploadsDir = path.join(process.cwd(), 'uploads');
+      const files = fs.readdirSync(uploadsDir);
+
+      for (const file of files) {
+        const filePath = path.join(uploadsDir, file);
+        const buffer = fs.readFileSync(filePath);
+        
+        // Extract userId from path if structured
+        const userId = extractUserIdFromPath(filePath);
+        
+        const result = await uploadFile(
+          buffer,
+          file,
+          'USER_MEDIA',
+          userId,
+          'image/jpeg',
+          'migrated'
+        );
+        
+        if (result.error) {
+          console.error(`Failed to migrate ${file}:`, result.error);
+        } else {
+          console.log(`Migrated ${file} → ${result.url}`);
+        }
+      }
+    }
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Update Database URLs">
+    Update database records to point to Supabase URLs:
+
+    <CodeGroup>
+    ```sql Update Media URLs
+    UPDATE session_media
+    SET media_url = REPLACE(
+      media_url,
+      'http://localhost:5000/uploads/',
+      'https://your-project.supabase.co/storage/v1/object/public/user-media/migrated/'
+    )
+    WHERE media_url LIKE 'http://localhost:5000/uploads/%';
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Remove Local Storage Code">
+    Once migration is verified:
+    - Remove `uploads/` directory
+    - Delete local storage functions
+    - Update `.gitignore` if needed
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Debug Storage Issues
+
+<CodeGroup>
+```typescript Enable Debug Logging
+// In server/supabase.ts
+function log(message: string, source = "supabase"): void {
+  logger.debug(`[${source}] ${message}`);
+}
+
+// Logs will show:
+// [supabase] File uploaded to Supabase: users/123/file.jpg
+// [supabase] File deleted from Supabase: users/123/old.jpg
+```
+</CodeGroup>
+
+### Test Storage Connectivity
+
+<CodeGroup>
+```bash Manual Test
+# Test upload (creates tiny file)
+curl -X GET http://localhost:5000/api/storage/status
+
+# Response shows:
+{
+  "configured": true,
+  "connectionTest": "success"
+}
+```
+</CodeGroup>
+
+### Check Supabase Dashboard
+
+1. Navigate to **Storage** in Supabase dashboard
+2. Select bucket (e.g., `user-media`)
+3. Browse uploaded files
+4. Check file sizes and paths
+5. Download files to verify integrity
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="API Key Protection" icon="shield-halved">
+    - Store keys in `.env` only
+    - Never commit service role key
+    - Use anon key for client-side (if needed)
+    - Rotate keys if compromised
+  </Card>
+
+  <Card title="Input Validation" icon="filter">
+    - Validate file types (MIME + extension)
+    - Enforce size limits (100MB default)
+    - Sanitize filenames (prevent path traversal)
+    - Check image dimensions if needed
+  </Card>
+
+  <Card title="Access Control" icon="user-lock">
+    - Verify user owns files before operations
+    - Use userId in paths for isolation
+    - Implement rate limiting on uploads
+    - Track upload quotas per user
+  </Card>
+
+  <Card title="Content Security" icon="circle-exclamation">
+    - Scan uploads for malware (optional)
+    - Validate image integrity
+    - Block executable file types
+    - Log all upload/delete operations
+  </Card>
+</CardGroup>
+
+## Related Resources
+
+- [Supabase Storage Documentation](https://supabase.com/docs/guides/storage)
+- [Storage API Reference](https://supabase.com/docs/reference/javascript/storage-from-upload)
+- [Bucket Configuration](https://supabase.com/docs/guides/storage/buckets)
+- [Security Policies](https://supabase.com/docs/guides/storage/security)

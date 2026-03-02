@@ -1,0 +1,432 @@
+---
+title: Reddit API Integration
+description: Configure Reddit API for fetching subreddit content
+icon: brands reddit
+---
+
+The Reddit API integration powers content fetching from subreddits for automated sessions and the Gaslighter/Scroller features.
+
+## Prerequisites
+
+Before starting, you'll need:
+- A Reddit account
+- Access to the [Reddit App Preferences](https://www.reddit.com/prefs/apps) page
+
+## Setup Steps
+
+<Steps>
+  <Step title="Create Reddit Application">
+    Navigate to Reddit's [App Preferences](https://www.reddit.com/prefs/apps) and create a new application.
+
+    1. Click "create another app" or "are you a developer? create an app"
+    2. Choose application type: **script**
+    3. Fill in the required fields:
+       - **name**: Your app name (e.g., "JOIP Media Fetcher")
+       - **redirect uri**: `http://localhost` (required but not used)
+
+    <Note>
+      The redirect URI is required by Reddit but JOIP uses application-only authentication, so this value won't be used.
+    </Note>
+  </Step>
+
+  <Step title="Get API Credentials">
+    After creating the app, Reddit displays your credentials:
+
+    - **Client ID**: The string under "personal use script" (14 characters)
+    - **Client Secret**: The secret key shown below (27 characters)
+
+    <CodeGroup>
+    ```bash Example Credentials
+    # Client ID appears below "personal use script"
+    abcd1234EFGH56
+
+    # Client Secret is labeled "secret"
+    a1b2c3d4e5f6g7h8i9j0k1l2m3n
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    Add your credentials to the `.env` file:
+
+    <CodeGroup>
+    ```bash .env
+    REDDIT_CLIENT_ID=your_client_id_here
+    REDDIT_CLIENT_SECRET=your_client_secret_here
+    ```
+    </CodeGroup>
+
+    <Warning>
+      Never commit your `.env` file or expose these credentials publicly. They provide access to Reddit's API on your behalf.
+    </Warning>
+  </Step>
+
+  <Step title="Verify Configuration">
+    The server validates Reddit credentials on startup. Check your logs:
+
+    <CodeGroup>
+    ```bash Success
+    [reddit] Token obtained, expires in 3600 seconds
+    ```
+
+    ```bash Failure
+    [error] Missing Reddit API credentials
+    [error] Reddit token request failed: 401 Unauthorized
+    ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+## Implementation Details
+
+### Authentication Flow
+
+JOIP uses Reddit's **application-only OAuth** flow for server-side authentication:
+
+<CodeGroup>
+```typescript server/reddit.ts
+// Token manager handles automatic token refresh
+class TokenManager {
+  private async getApplicationToken(): Promise<boolean> {
+    const params = new URLSearchParams({
+      grant_type: 'client_credentials',
+    });
+    
+    const auth = Buffer.from(
+      `${REDDIT_CLIENT_ID}:${REDDIT_CLIENT_SECRET}`
+    ).toString('base64');
+    
+    const response = await fetch(REDDIT_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${auth}`,
+        'User-Agent': REDDIT_USER_AGENT
+      },
+      body: params.toString(),
+    });
+    
+    const data = await response.json();
+    this.accessToken = data.access_token;
+    this.tokenExpiresAt = Date.now() + (data.expires_in * 1000);
+    
+    return true;
+  }
+}
+```
+</CodeGroup>
+
+### Rate Limiting
+
+JOIP implements aggressive rate limiting to prevent IP bans:
+
+- **50 requests per minute** (Reddit allows 60, we use 50 for safety)
+- **1.1 second minimum** interval between requests
+- **Exponential backoff** for 429 errors
+- **Request queuing** to handle bursts
+
+<CodeGroup>
+```typescript Rate Limit Configuration
+const MAX_REQUESTS_PER_MINUTE = 50;
+const MIN_REQUEST_INTERVAL = 1100; // milliseconds
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+```
+</CodeGroup>
+
+### Caching Strategy
+
+The `RedditService` uses multi-tier caching:
+
+<Steps>
+  <Step title="Memory Cache">
+    - **200 entries max** in memory
+    - **10 minute TTL** for content freshness
+    - **LRU eviction** based on hits and recency
+  </Step>
+
+  <Step title="Disk Cache">
+    - **1000 entries max** in `.reddit-cache/`
+    - Persistent across server restarts
+    - Indexed for fast lookups
+  </Step>
+
+  <Step title="Validation Cache">
+    - **1 hour TTL** for subreddit validation
+    - Reduces redundant API calls
+  </Step>
+</Steps>
+
+## Common Operations
+
+### Fetch Subreddit Posts
+
+<CodeGroup>
+```typescript Fetch with Options
+import { fetchSubredditPosts } from './reddit';
+
+// Basic fetch
+const posts = await fetchSubredditPosts('pics', 25);
+
+// With sorting/filtering
+const topPosts = await fetchSubredditPosts('pics', 25, {
+  sortBy: 'top',
+  timeRange: 'week'
+});
+
+// Available options:
+// sortBy: 'hot' | 'new' | 'top' | 'rising'
+// timeRange: 'hour' | 'day' | 'week' | 'month' | 'year' | 'all'
+```
+</CodeGroup>
+
+### Validate Subreddit
+
+<CodeGroup>
+```typescript Validation
+import { validateSubreddit } from './reddit';
+
+const result = await validateSubreddit('programming');
+
+if (result.valid) {
+  console.log('Subreddit is accessible');
+} else {
+  console.error(result.error);
+  // Possible errors:
+  // - "Subreddit r/xyz does not exist"
+  // - "Subreddit r/xyz is private or quarantined"
+  // - "Unable to access r/xyz (403)"
+}
+```
+</CodeGroup>
+
+### Extract Media URLs
+
+<CodeGroup>
+```typescript Media Extraction
+import { extractMediaFromPosts } from './reddit';
+
+const posts = await fetchSubredditPosts('earthporn', 50);
+const mediaUrls = extractMediaFromPosts(posts);
+
+// Returns array of direct image URLs:
+// [
+//   'https://i.redd.it/abc123.jpg',
+//   'https://i.imgur.com/def456.png',
+//   ...
+// ]
+```
+</CodeGroup>
+
+### Fetch from Multiple Subreddits
+
+<CodeGroup>
+```typescript Multi-Subreddit Fetch
+import { fetchPostsFromSubreddits } from './reddit';
+
+const subreddits = ['pics', 'earthporn', 'wallpapers'];
+const posts = await fetchPostsFromSubreddits(subreddits, 30);
+
+// Returns shuffled posts from all subreddits
+// Automatically handles failures (continues with successful subs)
+```
+</CodeGroup>
+
+## Media Type Support
+
+JOIP extracts various media types from Reddit posts:
+
+| Type | Domains | Notes |
+|------|---------|-------|
+| Direct Images | `i.redd.it`, `preview.redd.it` | JPEG, PNG, WebP, GIF |
+| Imgur | `imgur.com`, `i.imgur.com` | Auto-converts non-direct links |
+| Videos | `v.redd.it` | Falls back to preview images |
+| External | `gfycat.com`, `redgifs.com` | CORS may block some content |
+
+<Warning>
+  Gallery URLs (`/gallery/`) are **skipped** as they can't be displayed directly.
+</Warning>
+
+## NSFW Content Handling
+
+The Reddit integration supports NSFW subreddits:
+
+<CodeGroup>
+```typescript NSFW Support
+// NSFW content is included by default
+const url = `${REDDIT_API_BASE}/r/${subreddit}/${sort}.json?raw_json=1`;
+
+// Headers explicitly accept NSFW
+const response = await fetch(url, {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'User-Agent': REDDIT_USER_AGENT,
+    'Accept': 'application/json',
+  },
+});
+```
+</CodeGroup>
+
+## Troubleshooting
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="401 Unauthorized">
+    **Cause**: Invalid or expired credentials
+
+    **Solution**:
+    1. Verify `REDDIT_CLIENT_ID` and `REDDIT_CLIENT_SECRET` in `.env`
+    2. Ensure credentials match those shown in [Reddit Apps](https://www.reddit.com/prefs/apps)
+    3. Check for trailing spaces or quotes in environment variables
+    4. Restart the server after updating `.env`
+  </Accordion>
+
+  <Accordion title="429 Rate Limited">
+    **Cause**: Too many requests to Reddit API
+
+    **Solution**:
+    - Built-in rate limiting should prevent this
+    - If it occurs, the system will automatically retry with exponential backoff
+    - Check logs for "Rate limited, waiting Xms before retry"
+    - Reduce concurrent session creations if possible
+  </Accordion>
+
+  <Accordion title="404 Subreddit Not Found">
+    **Cause**: Subreddit doesn't exist or is private
+
+    **Solution**:
+    - Verify subreddit name (case-insensitive)
+    - Check if subreddit is quarantined or banned
+    - Use validation endpoint before fetching content
+  </Accordion>
+
+  <Accordion title="Empty Results">
+    **Cause**: Subreddit has no media posts
+
+    **Solution**:
+    - JOIP filters posts to only include direct media URLs
+    - Try different subreddits focused on images/media
+    - Check `extractMediaFromPosts` to verify filtering logic
+  </Accordion>
+</AccordionGroup>
+
+## API Reference
+
+### Core Functions
+
+<CodeGroup>
+```typescript Type Definitions
+// Fetch posts from a subreddit
+function fetchSubredditPosts(
+  subreddit: string,
+  limit?: number,
+  options?: {
+    sortBy?: 'hot' | 'new' | 'top' | 'rising';
+    timeRange?: 'hour' | 'day' | 'week' | 'month' | 'year' | 'all';
+  }
+): Promise<any[]>
+
+// Validate subreddit accessibility
+function validateSubreddit(
+  subreddit: string
+): Promise<{ valid: boolean; error?: string }>
+
+// Extract media URLs from posts
+function extractMediaFromPosts(
+  posts: any[]
+): string[]
+
+// Convert raw posts to typed format
+function convertToPosts(
+  rawPosts: any[]
+): RedditPost[]
+
+// Search Reddit by keyword
+function searchRedditPosts(
+  query: string,
+  limit?: number,
+  excludeUrls?: string[]
+): Promise<RedditPost[]>
+```
+</CodeGroup>
+
+### RedditPost Schema
+
+<CodeGroup>
+```typescript Post Structure
+interface RedditPost {
+  id: string;
+  url: string;
+  title: string;
+  author: string;
+  subreddit: string;
+  thumbnail: string;
+  media_url?: string;
+  permalink: string;
+  created_utc: number;
+  type: string; // 'image' | 'gif' | 'video' | 'link'
+}
+```
+</CodeGroup>
+
+## Performance Considerations
+
+### Optimization Tips
+
+1. **Use Caching**: The service automatically caches results for 10 minutes
+2. **Batch Requests**: Fetch from multiple subreddits in parallel when possible
+3. **Request Limits**: Keep limits reasonable (25-100) to balance variety and speed
+4. **Validation**: Cache validation results to avoid redundant checks
+
+### Cache Statistics
+
+<CodeGroup>
+```typescript Check Cache Performance
+import { redditService } from './redditService';
+
+const stats = redditService.getCacheStats();
+console.log(stats);
+// {
+//   size: 150,
+//   maxSize: 200,
+//   ttl: 600000,
+//   hitRate: 78.5,
+//   diskCacheSize: 500,
+//   rateLimitStatus: '12/50 requests in current window'
+// }
+```
+</CodeGroup>
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Credential Storage" icon="key">
+    - Store credentials in `.env` only
+    - Never commit to version control
+    - Use different credentials per environment
+  </Card>
+
+  <Card title="Rate Limiting" icon="gauge">
+    - Built-in rate limiting prevents bans
+    - Monitor usage in production
+    - Implement user-level throttling if needed
+  </Card>
+
+  <Card title="Error Handling" icon="shield-check">
+    - All errors are logged but not exposed to users
+    - Generic messages prevent information leakage
+    - Graceful degradation on API failures
+  </Card>
+
+  <Card title="User Agent" icon="browser">
+    - Uses descriptive User-Agent header
+    - Identifies app to Reddit
+    - Helps with API support if issues arise
+  </Card>
+</CardGroup>
+
+## Related Resources
+
+- [Reddit API Documentation](https://www.reddit.com/dev/api)
+- [OAuth2 Application-Only Flow](https://github.com/reddit-archive/reddit/wiki/OAuth2)
+- [Rate Limiting Guidelines](https://github.com/reddit-archive/reddit/wiki/API#rules)

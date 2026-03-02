@@ -1,0 +1,757 @@
+---
+title: Testing Strategy
+description: Testing guidelines and setup for the JOIP Web Application
+---
+
+## Overview
+
+The JOIP Web Application has a Jest-based testing infrastructure configured but **not yet fully implemented**. This guide covers the testing strategy, configuration, and how to add tests when the testing suite is enabled.
+
+<Note>
+  **Current Status**: Jest configuration exists in `jest.config.js`, but Jest and ts-jest packages are not installed. Tests are not currently run in CI/CD.
+</Note>
+
+## Testing Infrastructure
+
+### Jest Configuration
+
+The project includes a comprehensive Jest configuration for both backend and frontend testing:
+
+<CodeGroup>
+```javascript jest.config.js
+/** @type {import('jest').Config} */
+export default {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  roots: ['<rootDir>/tests'],
+  testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1',
+  },
+  collectCoverageFrom: [
+    'server/**/*.ts',
+    'shared/**/*.ts',
+    '!server/index.ts',
+    '!**/*.d.ts',
+    '!**/node_modules/**',
+  ],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+  projects: [
+    {
+      displayName: 'backend',
+      testEnvironment: 'node',
+      testMatch: ['<rootDir>/tests/backend/**/*.test.ts'],
+    },
+    {
+      displayName: 'frontend',
+      testEnvironment: 'jsdom',
+      testMatch: ['<rootDir>/tests/frontend/**/*.test.tsx'],
+      moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/client/src/$1',
+        '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
+      },
+      transform: {
+        '^.+\\.tsx?$': ['ts-jest', {
+          tsconfig: {
+            jsx: 'react',
+          },
+        }],
+      },
+    },
+  ],
+};
+```
+</CodeGroup>
+
+### Test Directory Structure
+
+Tests are organized into backend and frontend directories:
+
+```
+tests/
+├── setup.ts              # Test setup and global mocks
+├── backend/              # Server-side tests
+│   ├── routes/
+│   │   ├── sessions.test.ts
+│   │   ├── auth.test.ts
+│   │   └── media.test.ts
+│   ├── services/
+│   │   ├── storage.test.ts
+│   │   ├── openai.test.ts
+│   │   └── supabase.test.ts
+│   └── utils/
+│       ├── validation.test.ts
+│       └── helpers.test.ts
+└── frontend/             # Client-side tests
+    ├── components/
+    │   ├── SessionPlayer.test.tsx
+    │   ├── SessionCard.test.tsx
+    │   └── Button.test.tsx
+    ├── pages/
+    │   ├── SessionsPage.test.tsx
+    │   └── EditSessionPage.test.tsx
+    └── hooks/
+        ├── use-toast.test.ts
+        └── use-auth.test.ts
+```
+
+## Enabling Tests
+
+### Installation
+
+To enable the testing suite, install the required dependencies:
+
+<Steps>
+  <Step title="Install Testing Dependencies">
+    ```bash
+    npm install --save-dev jest ts-jest @types/jest
+    npm install --save-dev @testing-library/react @testing-library/jest-dom
+    npm install --save-dev @testing-library/user-event
+    npm install --save-dev identity-obj-proxy
+    ```
+  </Step>
+
+  <Step title="Add Test Script">
+    Add the test script to `package.json`:
+
+    ```json package.json
+    {
+      "scripts": {
+        "test": "jest",
+        "test:watch": "jest --watch",
+        "test:coverage": "jest --coverage",
+        "test:backend": "jest --selectProject=backend",
+        "test:frontend": "jest --selectProject=frontend"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Create Test Setup File">
+    Create `tests/setup.ts`:
+
+    ```typescript tests/setup.ts
+    import '@testing-library/jest-dom';
+
+    // Mock environment variables
+    process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/joip_test';
+    process.env.SESSION_SECRET = 'test-secret';
+    process.env.NODE_ENV = 'test';
+
+    // Global test utilities
+    global.beforeAll(() => {
+      // Setup global test state
+    });
+
+    global.afterAll(() => {
+      // Cleanup global test state
+    });
+    ```
+  </Step>
+
+  <Step title="Run Tests">
+    ```bash
+    npm test
+    ```
+  </Step>
+</Steps>
+
+## Testing Strategies
+
+### Backend Testing
+
+#### Unit Tests for Database Operations
+
+Test individual storage layer functions:
+
+<CodeGroup>
+```typescript tests/backend/services/storage.test.ts
+import { storage } from '../../../server/storage';
+import { db } from '../../../server/db';
+import { insertSessionSchema } from '@shared/schema';
+
+describe('Storage Layer', () => {
+  describe('createSession', () => {
+    it('should create a new session with valid data', async () => {
+      const sessionData = {
+        title: 'Test Session',
+        userId: 'test-user-id',
+        subreddits: ['test', 'example'],
+        intervalMin: 5,
+        intervalMax: 10,
+        transition: 'fade' as const,
+      };
+
+      const session = await storage.createSession(sessionData);
+
+      expect(session).toBeDefined();
+      expect(session.id).toBeDefined();
+      expect(session.title).toBe('Test Session');
+      expect(session.userId).toBe('test-user-id');
+      expect(session.subreddits).toEqual(['test', 'example']);
+    });
+
+    it('should throw validation error for invalid data', async () => {
+      const invalidData = {
+        title: '', // Empty title should fail
+        userId: 'test-user-id',
+        subreddits: [],
+      };
+
+      await expect(storage.createSession(invalidData)).rejects.toThrow();
+    });
+  });
+
+  describe('getSession', () => {
+    it('should return session by ID', async () => {
+      const created = await storage.createSession({
+        title: 'Test Session',
+        userId: 'test-user-id',
+        subreddits: ['test'],
+      });
+
+      const fetched = await storage.getSession(created.id);
+
+      expect(fetched).toBeDefined();
+      expect(fetched?.id).toBe(created.id);
+      expect(fetched?.title).toBe('Test Session');
+    });
+
+    it('should return null for non-existent session', async () => {
+      const session = await storage.getSession(999999);
+      expect(session).toBeNull();
+    });
+  });
+});
+```
+</CodeGroup>
+
+#### Integration Tests for API Routes
+
+Test complete API endpoints:
+
+<CodeGroup>
+```typescript tests/backend/routes/sessions.test.ts
+import request from 'supertest';
+import { app } from '../../../server/index';
+import { db } from '../../../server/db';
+
+describe('Sessions API', () => {
+  let authToken: string;
+  let userId: string;
+
+  beforeAll(async () => {
+    // Create test user and get auth token
+    const res = await request(app)
+      .post('/api/login')
+      .send({ email: 'test@example.com', password: 'password' });
+    
+    authToken = res.body.token;
+    userId = res.body.user.id;
+  });
+
+  afterAll(async () => {
+    // Cleanup test data
+    await db.delete(users).where(eq(users.id, userId));
+  });
+
+  describe('POST /api/sessions', () => {
+    it('should create a new session', async () => {
+      const sessionData = {
+        title: 'Test Session',
+        subreddits: ['test', 'example'],
+        intervalMin: 5,
+        intervalMax: 10,
+        transition: 'fade',
+      };
+
+      const res = await request(app)
+        .post('/api/sessions')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(sessionData);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('id');
+      expect(res.body.title).toBe('Test Session');
+      expect(res.body.userId).toBe(userId);
+    });
+
+    it('should return 401 without authentication', async () => {
+      const res = await request(app)
+        .post('/api/sessions')
+        .send({ title: 'Test' });
+
+      expect(res.status).toBe(401);
+    });
+
+    it('should return 400 for invalid data', async () => {
+      const invalidData = {
+        title: '', // Empty title
+        subreddits: [], // Empty array
+      };
+
+      const res = await request(app)
+        .post('/api/sessions')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(invalidData);
+
+      expect(res.status).toBe(400);
+      expect(res.body).toHaveProperty('error');
+    });
+  });
+
+  describe('GET /api/sessions/:id', () => {
+    it('should return session details', async () => {
+      // Create session first
+      const created = await request(app)
+        .post('/api/sessions')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ title: 'Test', subreddits: ['test'] });
+
+      const res = await request(app)
+        .get(`/api/sessions/${created.body.id}`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.id).toBe(created.body.id);
+    });
+
+    it('should return 403 for unauthorized access', async () => {
+      // Create session as different user
+      const otherSession = { /* ... */ };
+
+      const res = await request(app)
+        .get(`/api/sessions/${otherSession.id}`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(res.status).toBe(403);
+    });
+  });
+});
+```
+</CodeGroup>
+
+### Frontend Testing
+
+#### Component Tests
+
+Test React components in isolation:
+
+<CodeGroup>
+```typescript tests/frontend/components/SessionCard.test.tsx
+import { render, screen, fireEvent } from '@testing-library/react';
+import { SessionCard } from '@/components/SessionCard';
+import { BrowserRouter } from 'react-router-dom';
+
+const mockSession = {
+  id: 1,
+  title: 'Test Session',
+  thumbnail: 'https://example.com/thumb.jpg',
+  subreddits: ['test', 'example'],
+  isPublic: false,
+  isFavorite: false,
+  createdAt: new Date('2024-01-01'),
+};
+
+describe('SessionCard', () => {
+  it('renders session information', () => {
+    render(
+      <BrowserRouter>
+        <SessionCard session={mockSession} />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText('Test Session')).toBeInTheDocument();
+    expect(screen.getByAltText('Test Session thumbnail')).toHaveAttribute(
+      'src',
+      'https://example.com/thumb.jpg'
+    );
+  });
+
+  it('displays subreddit badges', () => {
+    render(
+      <BrowserRouter>
+        <SessionCard session={mockSession} />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText('r/test')).toBeInTheDocument();
+    expect(screen.getByText('r/example')).toBeInTheDocument();
+  });
+
+  it('handles play button click', () => {
+    const onPlay = jest.fn();
+    
+    render(
+      <BrowserRouter>
+        <SessionCard session={mockSession} onPlay={onPlay} />
+      </BrowserRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /play/i }));
+    expect(onPlay).toHaveBeenCalledWith(mockSession.id);
+  });
+
+  it('shows favorite icon when favorited', () => {
+    const favoritedSession = { ...mockSession, isFavorite: true };
+    
+    render(
+      <BrowserRouter>
+        <SessionCard session={favoritedSession} />
+      </BrowserRouter>
+    );
+
+    const favoriteIcon = screen.getByTestId('favorite-icon');
+    expect(favoriteIcon).toHaveClass('text-yellow-500');
+  });
+});
+```
+</CodeGroup>
+
+#### Page Tests
+
+Test complete page components:
+
+<CodeGroup>
+```typescript tests/frontend/pages/SessionsPage.test.tsx
+import { render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SessionsPage } from '@/pages/SessionsPage';
+import { AuthContext } from '@/lib/AuthContext';
+
+const mockUser = {
+  id: 'test-user-id',
+  email: 'test@example.com',
+  firstName: 'Test',
+  lastName: 'User',
+};
+
+const mockSessions = [
+  {
+    id: 1,
+    title: 'Session 1',
+    thumbnail: 'https://example.com/1.jpg',
+    subreddits: ['test'],
+    createdAt: new Date(),
+  },
+  {
+    id: 2,
+    title: 'Session 2',
+    thumbnail: 'https://example.com/2.jpg',
+    subreddits: ['example'],
+    createdAt: new Date(),
+  },
+];
+
+const renderWithProviders = (component: React.ReactElement) => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AuthContext.Provider value={{ user: mockUser, isLoading: false }}>
+        {component}
+      </AuthContext.Provider>
+    </QueryClientProvider>
+  );
+};
+
+describe('SessionsPage', () => {
+  beforeEach(() => {
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/sessions')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockSessions,
+        });
+      }
+      return Promise.reject(new Error('Not found'));
+    }) as jest.Mock;
+  });
+
+  it('renders sessions list', async () => {
+    renderWithProviders(<SessionsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Session 1')).toBeInTheDocument();
+      expect(screen.getByText('Session 2')).toBeInTheDocument();
+    });
+  });
+
+  it('shows loading state', () => {
+    renderWithProviders(<SessionsPage />);
+    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+  });
+
+  it('displays empty state when no sessions', async () => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: async () => [],
+      })
+    ) as jest.Mock;
+
+    renderWithProviders(<SessionsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/no sessions/i)).toBeInTheDocument();
+    });
+  });
+});
+```
+</CodeGroup>
+
+#### Hook Tests
+
+Test custom React hooks:
+
+<CodeGroup>
+```typescript tests/frontend/hooks/use-toast.test.ts
+import { renderHook, act } from '@testing-library/react';
+import { useToast } from '@/hooks/use-toast';
+
+describe('useToast', () => {
+  it('should show and dismiss toast', () => {
+    const { result } = renderHook(() => useToast());
+
+    act(() => {
+      result.current.toast({
+        title: 'Test Toast',
+        description: 'This is a test',
+      });
+    });
+
+    expect(result.current.toasts).toHaveLength(1);
+    expect(result.current.toasts[0].title).toBe('Test Toast');
+
+    act(() => {
+      result.current.dismiss(result.current.toasts[0].id);
+    });
+
+    expect(result.current.toasts).toHaveLength(0);
+  });
+
+  it('should auto-dismiss after duration', async () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() => useToast());
+
+    act(() => {
+      result.current.toast({
+        title: 'Test Toast',
+        duration: 3000,
+      });
+    });
+
+    expect(result.current.toasts).toHaveLength(1);
+
+    act(() => {
+      jest.advanceTimersByTime(3000);
+    });
+
+    expect(result.current.toasts).toHaveLength(0);
+    jest.useRealTimers();
+  });
+});
+```
+</CodeGroup>
+
+## Test Coverage Goals
+
+### Recommended Coverage Targets
+
+- **Backend Routes**: 80%+ coverage
+- **Storage Layer**: 90%+ coverage
+- **Shared Schemas**: 100% coverage (validation logic)
+- **Frontend Components**: 70%+ coverage
+- **Critical Features**: 90%+ coverage (auth, sessions, payments)
+
+### Running Coverage Reports
+
+```bash
+npm run test:coverage
+```
+
+Output:
+```
+--------------------------|---------|----------|---------|---------|-------------------
+File                      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+--------------------------|---------|----------|---------|---------|-------------------
+All files                 |   75.23 |    68.45 |   82.15 |   76.89 |
+server/                   |   82.45 |    75.23 |   88.92 |   84.12 |
+  storage.ts              |   91.23 |    85.45 |   95.67 |   92.34 |
+  routes.ts               |   78.45 |    70.23 |   85.12 |   79.67 |
+shared/                   |   95.67 |    92.34 |   98.45 |   96.23 |
+  schema.ts               |   95.67 |    92.34 |   98.45 |   96.23 |
+--------------------------|---------|----------|---------|---------|-------------------
+```
+
+## Mocking Strategies
+
+### Mocking Database Operations
+
+<CodeGroup>
+```typescript tests/backend/mocks/db.ts
+import { jest } from '@jest/globals';
+
+export const mockDb = {
+  select: jest.fn(() => ({
+    from: jest.fn(() => ({
+      where: jest.fn(() => Promise.resolve([])),
+    })),
+  })),
+  insert: jest.fn(() => ({
+    values: jest.fn(() => ({
+      returning: jest.fn(() => Promise.resolve([{ id: 1 }])),
+    })),
+  })),
+  update: jest.fn(() => ({
+    set: jest.fn(() => ({
+      where: jest.fn(() => ({
+        returning: jest.fn(() => Promise.resolve([{ id: 1 }])),
+      })),
+    })),
+  })),
+  delete: jest.fn(() => ({
+    where: jest.fn(() => Promise.resolve()),
+  })),
+};
+```
+</CodeGroup>
+
+### Mocking External APIs
+
+<CodeGroup>
+```typescript tests/backend/mocks/openai.ts
+import { jest } from '@jest/globals';
+
+export const mockOpenAI = {
+  chat: {
+    completions: {
+      create: jest.fn(() => Promise.resolve({
+        choices: [{
+          message: {
+            content: 'Generated caption text',
+          },
+        }],
+      })),
+    },
+  },
+};
+```
+</CodeGroup>
+
+### Mocking Supabase Storage
+
+<CodeGroup>
+```typescript tests/backend/mocks/supabase.ts
+import { jest } from '@jest/globals';
+
+export const mockSupabase = {
+  storage: {
+    from: jest.fn(() => ({
+      upload: jest.fn(() => Promise.resolve({ data: { path: 'test/path.jpg' }, error: null })),
+      remove: jest.fn(() => Promise.resolve({ error: null })),
+      getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://example.com/test.jpg' } })),
+    })),
+  },
+};
+```
+</CodeGroup>
+
+## Continuous Integration
+
+### GitHub Actions Workflow
+
+Add testing to CI/CD pipeline:
+
+<CodeGroup>
+```yaml .github/workflows/test.yml
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: joip_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run TypeScript check
+        run: npm run check
+      
+      - name: Run tests
+        run: npm run test:coverage
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/joip_test
+          SESSION_SECRET: test-secret
+      
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+```
+</CodeGroup>
+
+## Best Practices
+
+### Test Organization
+
+1. **Describe blocks**: Group related tests with descriptive names
+2. **It blocks**: Write clear, specific test descriptions
+3. **Arrange-Act-Assert**: Structure tests with setup, action, and verification
+4. **One assertion per test**: Focus each test on a single behavior
+5. **Test names**: Use "should" statements that describe expected behavior
+
+### Test Data
+
+1. **Factory functions**: Create test data generators for consistent fixtures
+2. **Cleanup**: Always clean up test data in `afterEach` or `afterAll`
+3. **Isolation**: Each test should be independent and not rely on others
+4. **Realistic data**: Use data that resembles production scenarios
+
+### Mocking
+
+1. **Mock external services**: Don't make real API calls in tests
+2. **Mock sparingly**: Only mock what's necessary for the test
+3. **Verify mocks**: Assert that mocks were called with expected arguments
+4. **Reset mocks**: Clear mock state between tests
+
+## Next Steps
+
+- [Review Local Setup Guide](/guides/development/local-setup)
+- [Understand Project Structure](/guides/development/project-structure)
+- [Learn about Database Migrations](/guides/development/database-migrations)

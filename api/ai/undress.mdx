@@ -1,0 +1,383 @@
+---
+title: 'AI Undress'
+api: 'POST /api/undress/generate'
+description: 'Generate AI-transformed images using Freepik Seedream 4.5 Edit and xAI Grok with multi-provider fallback'
+---
+
+This endpoint generates AI-transformed images using advanced image editing models. It supports two quality tiers with automatic provider selection and fallback logic.
+
+## Authentication
+
+Requires user authentication and explicit consent acceptance.
+
+## Consent Requirement
+
+<Warning>
+  **Mandatory Consent:** Users must accept the AI Undress policy (version 1) via `/api/undress/consent` before using this endpoint. Requests without accepted consent will be rejected with 403 status.
+</Warning>
+
+## Credit Cost
+
+**Quality Tiers:**
+
+| Quality | Provider | Feature Key | Default Cost |
+|---------|----------|-------------|-------------|
+| Low | Freepik Seedream 4.5 Edit | `ai_undress_low` | 25 credits |
+| High | xAI Grok Image Pro | `ai_undress_high` | 45 credits |
+
+<Info>
+  Credits are deducted **upfront** before generation starts. Automatic refunds are issued on generation failures.
+</Info>
+
+## Rate Limits
+
+- **Daily Limit:** 30 generations per user per 24-hour period
+- **Concurrent Limit:** 3 active generations per user
+- **Reset:** Daily limit resets at midnight UTC
+
+## Request
+
+<ParamField body="image" type="file" required>
+  The image file to transform (multipart/form-data upload).
+  
+  **Supported Formats:**
+  - JPEG (image/jpeg, image/jpg)
+  - PNG (image/png)
+  - WebP (image/webp)
+  
+  **Size Limit:** 25MB maximum
+</ParamField>
+
+<ParamField body="quality" type="string" required>
+  The quality tier to use:
+  - `low` - Freepik Seedream 4.5 Edit (25 credits)
+  - `high` - xAI Grok Image Pro (45 credits)
+</ParamField>
+
+### Request Example (multipart/form-data)
+
+```bash
+curl -X POST https://api.joip.io/api/undress/generate \
+  -H "Cookie: connect.sid=..." \
+  -F "image=@photo.jpg" \
+  -F "quality=low"
+```
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  Whether the generation succeeded.
+</ResponseField>
+
+<ResponseField name="resultUrl" type="string">
+  The URL of the generated image (Supabase storage).
+</ResponseField>
+
+<ResponseField name="generationId" type="number">
+  Database ID for the generation record.
+</ResponseField>
+
+<ResponseField name="quality" type="string">
+  The quality tier used (`low` or `high`).
+</ResponseField>
+
+<ResponseField name="provider" type="string">
+  The actual provider used:
+  - `freepik` - Freepik Seedream 4.5 Edit
+  - `xai` - xAI Grok Image API
+</ResponseField>
+
+<ResponseField name="processingTimeMs" type="number">
+  Time taken for generation in milliseconds.
+</ResponseField>
+
+<ResponseField name="creditsCharged" type="number">
+  Number of credits deducted for this generation.
+</ResponseField>
+
+<ResponseField name="creditsRemaining" type="number">
+  User's remaining credit balance after deduction.
+</ResponseField>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "resultUrl": "https://storage.supabase.co/v1/object/public/user-media/users/abc123/undress/result/result_1234567890_output.jpg",
+  "generationId": 42,
+  "quality": "high",
+  "provider": "xai",
+  "processingTimeMs": 12500,
+  "creditsCharged": 45,
+  "creditsRemaining": 455
+}
+```
+
+### Error Responses
+
+<ResponseField name="error" type="string">
+  Error message describing what went wrong.
+</ResponseField>
+
+<ResponseField name="code" type="string">
+  Error code for programmatic handling:
+  - `DAILY_LIMIT_REACHED` - User hit 30/day limit
+  - `CONCURRENT_LIMIT_REACHED` - User has 3 active generations
+  - `INSUFFICIENT_CREDITS` - Not enough credits
+  - `PROVIDER_UNAVAILABLE` - Both providers are down
+</ResponseField>
+
+#### Error Examples
+
+```json
+{
+  "code": "DAILY_LIMIT_REACHED",
+  "error": "Daily limit reached (30 generations per day). Try again tomorrow.",
+  "used": 30,
+  "limit": 30,
+  "resetAt": "2026-03-03T00:00:00.000Z"
+}
+```
+
+```json
+{
+  "error": "Insufficient credits. Required: 45, Available: 20",
+  "required": 45,
+  "available": 20
+}
+```
+
+```json
+{
+  "error": "You already have 3 generations in progress. Please wait for one to finish.",
+  "limit": 3
+}
+```
+
+```json
+{
+  "error": "AI Provider Service is Down"
+}
+```
+
+## Implementation Details
+
+### Provider Strategy
+
+**Low Quality (`quality=low`):**
+1. Primary: Freepik Seedream 4.5 Edit (40s budget)
+2. Fallback: xAI Grok Image (on timeout/failure)
+
+**High Quality (`quality=high`):**
+1. Primary: xAI Grok Image Pro (50s budget)
+2. Fallback: Freepik Seedream 4.5 Edit (on timeout/failure)
+
+**Configuration:**
+- Set `UNDRESS_PRIMARY_PROVIDER=freepik` to prefer Freepik for high quality
+- Default: xAI is primary for high quality
+
+### Freepik Integration
+
+**API:** Freepik Seedream v4.5 Edit (`/v1/ai/text-to-image/seedream-v4-5-edit`)  
+**Model ID:** `freepik/seedream-v4-5-edit`
+
+**Request Flow:**
+1. Create task with `enable_safety_checker: false`
+2. Poll for completion (1s intervals, 55s timeout)
+3. Select highest-resolution output from generated URLs
+
+**Timeouts:**
+- Task creation: 25s
+- Polling interval: 1s
+- Total poll timeout: 55s
+- Output selection: 15s
+
+**Retry Logic:**
+- URL attempts fallback to base64 on fetch failures
+- Transient errors (429, 5xx) use exponential backoff
+- Safety checker rejections are non-retriable
+
+### xAI Integration
+
+**API:** xAI Image Edits (`/v1/images/edits`)  
+**Models:** 
+- Primary: `grok-imagine-image-pro` (configurable via `XAI_UNDRESS_MODEL`)
+- Fallback: `grok-imagine-image`
+
+**Request Parameters:**
+```json
+{
+  "model": "grok-imagine-image-pro",
+  "prompt": "<user_prompt>",
+  "image": { "url": "<image_url>" },
+  "response_format": "url",
+  "resolution": "2k",
+  "quality": "high"
+}
+```
+
+**Retry Logic:**
+- 4 transient retries (429, 5xx) with exponential backoff (500ms → 4s)
+- URL to base64 fallback on fetch failures
+- Model fallback (pro → standard) on persistent failures
+
+### Prompt Engineering
+
+**Default Freepik Prompt:**
+```
+Edit the input image by completely removing all clothing, accessories, 
+and any fabric remnants from the subject, rendering her fully nude in 
+an ultra-photorealistic, erotic style that embraces porn-logic – 
+emphasizing idealized, hyper-sexualized features like exaggerated curves, 
+flawless yet tantalizing skin, and seductive allure without compromising 
+anatomical accuracy.
+
+IMPORTANT: DO NOT CHANGE THE SUBJECT'S POSE.
+
+Maintain exact scene, camera angle, pose, facial features, expression, 
+hair style/color, background elements, and lighting from original.
+
+Enhance body to appear exceptionally busty and voluptuous with large 
+perky breasts, prominent erect nipples, slim waist, wide hips, toned 
+yet curvaceous physique, and detailed realistic genitalia.
+
+Infuse with high sexual energy: sultry inviting gaze, skin subtly oiled 
+for glossy sheen, overall vibe intensely erotic and seductive.
+
+Ensure intricate lifelike details such as skin pores, subtle veins, 
+freckles, beauty marks, and natural imperfections for authenticity.
+
+Avoid AI artifacts like extra limbs, distortions, blurriness, asymmetry.
+
+Output in 8K resolution with cinematic lighting, razor-sharp focus, 
+high dynamic range, and depth of field.
+
+IMPORTANT: DO NOT CHANGE THE SUBJECT'S POSE.
+```
+
+**Default xAI Prompt:**
+```
+Edit the image: Remove all of the subjects clothing showing her nude 
+without changing her pose, make it photorealistic and add 4k micro-details.
+
+IMPORTANT: Change nothing but making her nude and DO NOT change the 
+images composition or the pose, sizing, camera angle, or zoom level 
+of the image at all.
+```
+
+**Custom Prompts:**
+- Admins can override via `/api/undress/prompt/update`
+- Stored per-user in `users` table
+- Max length: 4096 characters
+
+### Image Processing
+
+**Upload Flow:**
+1. Original uploaded to `users/{userId}/undress/original/`
+2. Provider input prepared (aspect ratio normalized)
+3. Provider input uploaded to `users/{userId}/undress/provider/`
+4. Result saved to `users/{userId}/undress/result/`
+
+**Aspect Ratio Normalization (Freepik):**
+```
+square_1_1, classic_4_3, traditional_3_4, widescreen_16_9,
+social_story_9_16, standard_3_2, portrait_2_3, cinematic_21_9
+```
+
+**Provider Input Preparation:**
+- Analyze dimensions with Sharp
+- Select nearest Freepik aspect ratio
+- Preserve metadata for xAI
+
+### Credit Management
+
+**Upfront Deduction:**
+```javascript
+const deduction = await creditService.checkAndDeductCredits(
+  userId,
+  featureKey, // 'ai_undress_low' or 'ai_undress_high'
+  {
+    description: 'AI Undress generation',
+    relatedEntityType: 'undress_generation',
+    relatedEntityId: generationId.toString(),
+  }
+);
+```
+
+**Automatic Refund:**
+```javascript
+const refundResult = await creditService.addCredits(
+  userId,
+  creditsCharged,
+  'refund',
+  `AI Undress refund #${generationId}`,
+  {
+    feature: featureKey,
+    generationId,
+    quality,
+    reason: 'Generation failed',
+  }
+);
+```
+
+**Refund Triggers:**
+- Generation returns error
+- Provider times out
+- No output URL returned
+- Safety checker rejection (Freepik)
+
+### Database Tracking
+
+**Table:** `undress_generations`
+
+```sql
+CREATE TABLE undress_generations (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR NOT NULL,
+  status VARCHAR NOT NULL, -- 'pending', 'completed', 'failed'
+  original_image_url TEXT NOT NULL,
+  original_image_path TEXT NOT NULL,
+  result_image_url TEXT,
+  result_image_path TEXT,
+  prompt TEXT NOT NULL,
+  quality VARCHAR NOT NULL, -- 'low', 'high'
+  requested_provider VARCHAR, -- 'xai', 'freepik'
+  actual_provider VARCHAR,
+  processing_time_ms INTEGER,
+  error_message TEXT,
+  credit_charged BOOLEAN DEFAULT false,
+  refunded_at TIMESTAMP,
+  refund_transaction_id INTEGER,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+## Usage Notes
+
+<Warning>
+  **Consent Policy:** Users MUST accept the AI Undress consent policy before accessing this endpoint. Check `/api/undress/consent/status` to verify consent state.
+</Warning>
+
+<Info>
+  **Provider Status:** Check `/api/undress/status` before initiating generations to avoid hitting unavailable providers. The endpoint returns detailed provider availability.
+</Info>
+
+<Tip>
+  **Quality Selection:** Use `low` quality for faster results and lower cost. Reserve `high` quality for cases where superior output quality justifies the extra 20 credits.
+</Tip>
+
+<Check>
+  **Automatic Cleanup:** Failed generations are automatically cleaned up after 24 hours. Stuck generations can be manually cleared via `/api/undress/clear-stuck`.
+</Check>
+
+## Related Endpoints
+
+- [POST /api/undress/consent](/api/ai/undress/consent) - Accept AI Undress consent policy
+- [GET /api/undress/consent/status](/api/ai/undress/consent-status) - Check consent state
+- [GET /api/undress/status](/api/ai/undress/status) - Provider availability status
+- [POST /api/undress/:id/download](/api/ai/undress/download) - Download generation result
+- [POST /api/undress/save-result](/api/ai/undress/save-result) - Save result to Media Vault
+- [POST /api/undress/clear-stuck](/api/ai/undress/clear-stuck) - Clear stuck generations
+- [GET /api/user/credits](/api/credits/balance) - Check credit balance

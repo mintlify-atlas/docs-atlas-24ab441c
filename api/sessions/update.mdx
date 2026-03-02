@@ -1,0 +1,192 @@
+---
+title: "Update Session"
+api: "PATCH /api/sessions/:id"
+description: "Update session metadata and configuration"
+---
+
+## Authentication
+
+This endpoint requires authentication. Users can only update sessions they own.
+
+## Path Parameters
+
+<ParamField path="id" type="integer" required>
+  The unique session ID to update
+</ParamField>
+
+## Request Body
+
+All fields are optional. Only provided fields will be updated.
+
+<ParamField body="title" type="string" optional>
+  Session title (minimum 1 character)
+</ParamField>
+
+<ParamField body="subreddits" type="string" optional>
+  Comma-separated list of subreddit names. Note: Cannot be modified for imported sessions
+</ParamField>
+
+<ParamField body="categoryId" type="integer | null" optional>
+  Category ID to assign. Pass `null` to reset to default category
+</ParamField>
+
+<ParamField body="intervalMin" type="integer" optional>
+  Minimum slide interval in seconds (1-60)
+</ParamField>
+
+<ParamField body="intervalMax" type="integer" optional>
+  Maximum slide interval in seconds (1-60)
+</ParamField>
+
+<ParamField body="transition" type="string" optional>
+  Transition effect: "fade", "slide", "zoom", "flip", or "none"
+</ParamField>
+
+<ParamField body="aiPrompt" type="string" optional>
+  Custom AI prompt. Note: Cannot be modified for imported sessions
+</ParamField>
+
+<ParamField body="captionTheme" type="string" optional>
+  Caption theme: "joi", "forced-bi", "beta", "cbt", "cuckold", or "custom". Note: Cannot be modified for imported sessions
+</ParamField>
+
+<ParamField body="thumbnail" type="string" optional>
+  Custom thumbnail URL. Pass empty string to auto-generate from subreddits
+</ParamField>
+
+<ParamField body="isPublic" type="boolean" optional>
+  Public accessibility flag
+</ParamField>
+
+<ParamField body="shareToCommunity" type="boolean" optional>
+  Whether to share to community feed. Enabling creates a persistent snapshot
+</ParamField>
+
+<ParamField body="isFavorite" type="boolean" optional>
+  Favorite status
+</ParamField>
+
+<ParamField body="isManualMode" type="boolean" optional>
+  Whether to disable auto-advance in player
+</ParamField>
+
+## Response
+
+Returns the updated session object.
+
+<ResponseField name="id" type="integer">
+  Session identifier
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Updated session title
+</ResponseField>
+
+<ResponseField name="subreddits" type="array">
+  Updated subreddit list
+</ResponseField>
+
+<ResponseField name="categoryId" type="integer">
+  Updated category ID
+</ResponseField>
+
+<ResponseField name="updatedAt" type="timestamp">
+  Timestamp of this update
+</ResponseField>
+
+<RequestExample>
+```bash Update Title and Intervals
+curl -X PATCH "https://app.joip.io/api/sessions/123" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: connect.sid=YOUR_SESSION_COOKIE" \
+  -d '{
+    "title": "Updated Session Title",
+    "intervalMin": 4,
+    "intervalMax": 12
+  }'
+```
+
+```bash Enable Community Sharing
+curl -X PATCH "https://app.joip.io/api/sessions/123" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: connect.sid=YOUR_SESSION_COOKIE" \
+  -d '{
+    "isPublic": true,
+    "shareToCommunity": true
+  }'
+```
+
+```bash Change Transition Effect
+curl -X PATCH "https://app.joip.io/api/sessions/123" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: connect.sid=YOUR_SESSION_COOKIE" \
+  -d '{
+    "transition": "zoom"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 - Success
+{
+  "id": 123,
+  "title": "Updated Session Title",
+  "userId": "user_abc123",
+  "subreddits": ["joi", "femdom"],
+  "categoryId": 1,
+  "intervalMin": 4,
+  "intervalMax": 12,
+  "transition": "fade",
+  "thumbnail": "https://i.redd.it/thumb.jpg",
+  "captionTheme": "joi",
+  "isPublic": false,
+  "shareToCommunity": false,
+  "isFavorite": true,
+  "isManualMode": false,
+  "isImported": false,
+  "createdAt": "2025-03-02T10:00:00Z",
+  "updatedAt": "2025-03-02T12:30:00Z"
+}
+```
+
+```json 400 - Invalid Intervals
+{
+  "message": "Maximum interval must be greater than or equal to minimum interval"
+}
+```
+
+```json 400 - Invalid Category
+{
+  "message": "Invalid category selected"
+}
+```
+
+```json 400 - No Valid Subreddits
+{
+  "message": "At least one valid subreddit is required"
+}
+```
+
+```json 403 - Forbidden
+{
+  "message": "You do not have permission to modify this session"
+}
+```
+
+```json 404 - Not Found
+{
+  "message": "Session not found"
+}
+```
+</ResponseExample>
+
+## Notes
+
+- For imported sessions, the following fields cannot be modified:
+  - `subreddits`
+  - `captionTheme`
+  - `aiPrompt`
+- If an empty `thumbnail` string is provided and subreddits exist, a new thumbnail is auto-generated
+- Enabling `shareToCommunity` creates a persistent community snapshot with media copied to durable storage
+- Disabling `shareToCommunity` removes the community snapshot
+- Activity is tracked for analytics with the updated caption theme (if changed)

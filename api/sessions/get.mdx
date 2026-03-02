@@ -1,0 +1,203 @@
+---
+title: "Get Session"
+api: "GET /api/sessions/:id"
+description: "Retrieve a single session with its media items"
+---
+
+## Authentication
+
+This endpoint requires authentication. Users can only access sessions they own or sessions marked as public.
+
+## Path Parameters
+
+<ParamField path="id" type="integer" required>
+  The unique session ID
+</ParamField>
+
+## Response
+
+Returns a session object along with all associated media items.
+
+<ResponseField name="session" type="object">
+  The session metadata object
+  
+  <ResponseField name="id" type="integer">
+    Unique session identifier
+  </ResponseField>
+  
+  <ResponseField name="title" type="string">
+    Session title
+  </ResponseField>
+  
+  <ResponseField name="userId" type="string">
+    Owner's user ID
+  </ResponseField>
+  
+  <ResponseField name="subreddits" type="array">
+    Array of subreddit names
+  </ResponseField>
+  
+  <ResponseField name="intervalMin" type="integer">
+    Minimum slide interval in seconds
+  </ResponseField>
+  
+  <ResponseField name="intervalMax" type="integer">
+    Maximum slide interval in seconds
+  </ResponseField>
+  
+  <ResponseField name="transition" type="string">
+    Transition effect type
+  </ResponseField>
+  
+  <ResponseField name="thumbnail" type="string" optional>
+    Session thumbnail URL
+  </ResponseField>
+  
+  <ResponseField name="captionTheme" type="string" optional>
+    Caption generation theme
+  </ResponseField>
+  
+  <ResponseField name="isPublic" type="boolean">
+    Public accessibility flag
+  </ResponseField>
+  
+  <ResponseField name="isFavorite" type="boolean">
+    Favorite status
+  </ResponseField>
+  
+  <ResponseField name="isManualMode" type="boolean">
+    Auto-advance disabled flag
+  </ResponseField>
+  
+  <ResponseField name="isImported" type="boolean">
+    Imported session flag
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="media" type="array">
+  Array of media items in the session
+  
+  <ResponseField name="id" type="integer">
+    Media item ID
+  </ResponseField>
+  
+  <ResponseField name="sessionId" type="integer">
+    Parent session ID
+  </ResponseField>
+  
+  <ResponseField name="mediaUrl" type="string">
+    URL to the media file
+  </ResponseField>
+  
+  <ResponseField name="thumbnail" type="string" optional>
+    Media thumbnail URL
+  </ResponseField>
+  
+  <ResponseField name="caption" type="string" optional>
+    Pre-generated or stored caption text
+  </ResponseField>
+  
+  <ResponseField name="type" type="string">
+    Media type: "image", "gif", or "video"
+  </ResponseField>
+  
+  <ResponseField name="redditPostId" type="string" optional>
+    Original Reddit post ID
+  </ResponseField>
+  
+  <ResponseField name="redditPostUrl" type="string" optional>
+    Original Reddit post URL
+  </ResponseField>
+  
+  <ResponseField name="subreddit" type="string" optional>
+    Source subreddit name
+  </ResponseField>
+  
+  <ResponseField name="order" type="integer">
+    Display order (0-based)
+  </ResponseField>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://app.joip.io/api/sessions/123" \
+  -H "Cookie: connect.sid=YOUR_SESSION_COOKIE"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 - Success
+{
+  "session": {
+    "id": 123,
+    "title": "My JOI Session",
+    "userId": "user_abc123",
+    "subreddits": ["joi", "femdom"],
+    "categoryId": 1,
+    "intervalMin": 5,
+    "intervalMax": 15,
+    "transition": "fade",
+    "thumbnail": "https://i.redd.it/thumb.jpg",
+    "aiPrompt": null,
+    "captionTheme": "joi",
+    "isPublic": false,
+    "isFavorite": true,
+    "isManualMode": false,
+    "isImported": false,
+    "createdAt": "2025-03-02T10:00:00Z",
+    "updatedAt": "2025-03-02T10:00:00Z"
+  },
+  "media": [
+    {
+      "id": 1001,
+      "sessionId": 123,
+      "mediaUrl": "https://i.redd.it/image1.jpg",
+      "thumbnail": "https://i.redd.it/image1.jpg",
+      "caption": null,
+      "type": "image",
+      "redditPostId": "abc123",
+      "redditPostUrl": "https://reddit.com/r/joi/comments/abc123",
+      "subreddit": "joi",
+      "order": 0
+    },
+    {
+      "id": 1002,
+      "sessionId": 123,
+      "mediaUrl": "https://i.redd.it/video1.mp4",
+      "thumbnail": "https://i.redd.it/video1_thumb.jpg",
+      "caption": "Follow my instructions...",
+      "type": "video",
+      "redditPostId": "def456",
+      "redditPostUrl": "https://reddit.com/r/femdom/comments/def456",
+      "subreddit": "femdom",
+      "order": 1
+    }
+  ]
+}
+```
+
+```json 400 - Invalid Session ID
+{
+  "message": "Invalid session ID"
+}
+```
+
+```json 403 - Forbidden
+{
+  "message": "You do not have permission to access this session"
+}
+```
+
+```json 404 - Not Found
+{
+  "message": "Session not found"
+}
+```
+</ResponseExample>
+
+## Notes
+
+- Only the session owner or users with access to public sessions can retrieve session details
+- Media items are returned in display order (sorted by `order` field)
+- Captions may be `null` for Reddit-based sessions (generated on-demand during playback)
+- Imported or manual sessions typically have pre-populated captions

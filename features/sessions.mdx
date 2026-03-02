@@ -1,0 +1,364 @@
+---
+title: 'Session Management'
+description: 'Create, manage, and play multimedia JOIP sessions with Reddit content or custom uploads'
+icon: 'video'
+---
+
+Sessions are the core feature of JOIP - multimedia slideshows that combine images, videos, and AI-generated captions for an interactive viewing experience.
+
+## Session Types
+
+JOIP supports three types of sessions, each with different creation workflows:
+
+<CardGroup cols={3}>
+  <Card title="Reddit Sessions" icon="reddit" iconType="duotone">
+    AI-powered sessions using content from your favorite subreddits with automatically generated captions
+  </Card>
+  <Card title="Custom Sessions" icon="images" iconType="duotone">
+    Upload your own images and write custom captions for complete creative control
+  </Card>
+  <Card title="Imported Sessions" icon="download" iconType="duotone">
+    Import existing JOIP galleries from Imgchest with preserved order and captions
+  </Card>
+</CardGroup>
+
+## Creating a Reddit Session
+
+Reddit sessions automatically fetch media from subreddits and generate AI captions based on your chosen theme.
+
+<Steps>
+  <Step title="Navigate to Sessions">
+    From the sidebar, click **Sessions** to open your sessions library.
+  </Step>
+  
+  <Step title="Choose Session Type">
+    Click the **Create Session** dropdown button and select **AI Generated Session**.
+    
+    <Note>
+      This option uses Reddit content with AI-generated captions based on your selected theme.
+    </Note>
+  </Step>
+  
+  <Step title="Configure Session Details">
+    Fill in the basic information:
+    - **Title**: Give your session a descriptive name
+    - **Subreddits**: Enter one or more subreddit names (e.g., `celebs`, `goddess`, `nsfw`)
+      - The system validates subreddits and removes invalid entries
+      - URLs and `r/` prefixes are automatically cleaned
+    - **Category** (optional): Organize your session into a category
+  </Step>
+  
+  <Step title="Select Caption Theme">
+    Choose an AI caption style from the available themes:
+    - **JOI / Edging**: Mommy/Goddess stroke commands with edge counts and denial
+    - **Forced-Bi**: Manipulation and rationalization themes
+    - **Bully / Simp**: Mean girl energy and out-of-league scenarios
+    - **Pain / CBT**: Specific physical command themes
+    - **Cuckold**: Bull and size comparison scenarios
+    - **Custom Prompt**: Write your own AI instructions
+    
+    <Note>
+      If you select "Custom Prompt", you'll need to provide detailed instructions for the AI caption generator.
+    </Note>
+  </Step>
+  
+  <Step title="Set Playback Speed">
+    Use the **Speed Range** sliders to control timing:
+    - **Min Interval**: Fastest slide duration (1-60 seconds)
+    - **Max Interval**: Slowest slide duration (1-60 seconds)
+    
+    The player will randomize timing between these values for variety.
+  </Step>
+  
+  <Step title="Choose Transition Effect">
+    Select how slides change:
+    - **Fade**: Smooth crossfade (default)
+    - **Slide**: Horizontal sliding motion
+    - **Zoom**: Scale-in effect
+    - **Flip**: 3D flip transition
+    - **None**: Instant change with no animation
+  </Step>
+  
+  <Step title="Upload Thumbnail (Optional)">
+    Add a custom thumbnail or let the system auto-generate one from the first media item.
+  </Step>
+  
+  <Step title="Set Privacy Options">
+    - **Public**: Makes your session visible in the community feed
+    - **Favorite**: Pin to your favorites tab for quick access
+    - **Manual Mode**: Disables auto-advance (requires manual navigation)
+  </Step>
+  
+  <Step title="Create Session">
+    Click **Save Session**. The system will:
+    1. Validate your subreddits
+    2. Create the session in your library
+    3. Begin fetching media in the background (up to 100 items)
+    4. Pre-generate captions for the first few slides
+    
+    <Note>
+      Session creation costs **25 credits** for premium AI caption generation.
+    </Note>
+  </Step>
+</Steps>
+
+## Creating a Custom Session
+
+Custom sessions let you upload your own images and write personalized captions.
+
+<Steps>
+  <Step title="Start New Custom Session">
+    Click **Create Session** → **Custom Session** from the Sessions page.
+  </Step>
+  
+  <Step title="Add Media Files">
+    Upload images using any of these methods:
+    - **Drag and drop** files anywhere in the editor
+    - Click **Add Media** to browse files
+    - **Paste from clipboard** (Ctrl/Cmd+V)
+    
+    <Warning>
+      - Maximum **100 images** per session
+      - **100MB** file size limit per image
+      - Supported formats: JPEG, PNG, WebP (GIFs not supported for AI captions)
+    </Warning>
+  </Step>
+  
+  <Step title="Write Captions">
+    For each slide:
+    - Click the caption text area
+    - Write your caption (no character limit, but &lt;500 recommended)
+    - Use the **AI magic wand** button to generate contextual captions
+    
+    <Note>
+      AI captions consider surrounding slides for narrative continuity.
+    </Note>
+  </Step>
+  
+  <Step title="Organize Slides">
+    - **Drag and drop** slides to reorder (use the large grab handle)
+    - **Duplicate** slides using the copy button
+    - **Replace** media by clicking the image overlay
+    - **Delete** slides using the trash icon
+  </Step>
+  
+  <Step title="Configure Session Settings">
+    Set title, timing, transitions, and privacy options (same as Reddit sessions).
+  </Step>
+  
+  <Step title="Validate and Save">
+    The system checks:
+    - All slides have images attached
+    - Captions are within recommended length
+    
+    Click **Save Session** to create your custom session.
+  </Step>
+</Steps>
+
+## Importing from Imgchest
+
+Import existing JOIP galleries with preserved captions and ordering.
+
+<Steps>
+  <Step title="Get Imgchest URL">
+    Copy the full URL of an Imgchest gallery (e.g., `https://imgchest.com/p/abc123`)
+  </Step>
+  
+  <Step title="Start Import">
+    Click **Create Session** → **Import JOIP** from the Sessions page.
+  </Step>
+  
+  <Step title="Paste URL and Import">
+    - Paste the Imgchest URL
+    - Click **Import**
+    - Wait for the system to fetch all images and captions
+  </Step>
+  
+  <Step title="Review Imported Content">
+    The session opens in the Manual Session Editor where you can:
+    - Edit captions
+    - Reorder slides
+    - Replace images
+    - Adjust settings
+  </Step>
+</Steps>
+
+<Note>
+  Imported sessions are treated as manual sessions and can be fully edited like custom sessions.
+</Note>
+
+## Playing Sessions
+
+Once created, sessions can be played with an interactive media player.
+
+<Tabs>
+  <Tab title="Start Playback">
+    From your Sessions library:
+    1. Find your session in the grid
+    2. Click the **Play** button
+    3. The session opens in fullscreen player mode
+    
+    Or use the quick-play button directly from session cards.
+  </Tab>
+  
+  <Tab title="Player Controls">
+    The session player includes:
+    
+    **Navigation**
+    - Arrow keys: Previous/Next slide
+    - Spacebar: Play/Pause auto-advance
+    - F: Toggle fullscreen
+    - Escape: Exit player
+    
+    **Display Panels**
+    - **Media Panel**: Shows current image/video (resizable)
+    - **Caption Panel**: Displays AI-generated or custom captions (resizable)
+    - **Progress Dots**: Visual indicator for sessions ≤10 slides
+    
+    **Advanced Features**
+    - **Preloading**: Next 3 images load in background for smooth transitions
+    - **GIF Optimization**: Reuses previous caption to maintain sync
+    - **Random Timing**: Varies between min/max interval for unpredictability
+  </Tab>
+  
+  <Tab title="Caption Generation">
+    For Reddit sessions, captions are generated on-demand:
+    
+    1. **Cache Check**: Looks for cached caption (24-hour expiration)
+    2. **API Request**: Generates new caption using selected theme
+    3. **Fallback**: Uses themed caption if API fails
+    4. **Storage**: Saves to IndexedDB for offline access
+    
+    <Note>
+      The server pre-warms captions for the first few slides to reduce initial load time.
+    </Note>
+    
+    **Regenerate Captions**
+    - Click the **regenerate** button on any slide
+    - Creates a new AI caption with different wording
+    - Invalidates the cache for that slide
+  </Tab>
+</Tabs>
+
+## Managing Sessions
+
+### Sessions Library
+
+Your Sessions page has three tabs:
+
+- **All Sessions**: Complete library with search
+- **Favorites**: Sessions marked as favorites
+- **Shared**: Sessions you've shared with others
+
+**Search and Filter**
+- Search by title or subreddit
+- Filter by category
+- Sort by date created or name
+
+### Session Actions
+
+<CardGroup cols={2}>
+  <Card title="Edit" icon="pencil">
+    - Reddit sessions: Modify subreddits, theme, timing, settings
+    - Custom/Imported: Full slide editor with caption editing
+    - Auto-routes to appropriate editor based on session type
+  </Card>
+  
+  <Card title="Share" icon="share">
+    - Generate unique share code (UUID-based)
+    - Toggle public/private access
+    - Copy shareable link: `/shared/{shareCode}`
+    - Shared sessions have public preview pages
+  </Card>
+  
+  <Card title="Refresh Media" icon="refresh">
+    - Reddit sessions only
+    - Fetches new media from subreddits
+    - Replaces old content with fresh posts
+  </Card>
+  
+  <Card title="Delete" icon="trash">
+    - Permanently removes session and all media
+    - For manual sessions: Deletes entire storage folder
+    - Cannot be undone
+  </Card>
+</CardGroup>
+
+## Session Badges
+
+Sessions display visual badges indicating their type:
+
+- **Subreddit Badges** (blue): Reddit-based sessions show source subreddit
+- **Custom Session** (purple): Manually created with uploads
+- **Imported** (gray): Imported from Imgchest
+- **AI Generated** (gold): Reddit session with AI captions
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Choosing Subreddits">
+    - Use 2-5 subreddits for variety without dilution
+    - Mix popular and niche subreddits
+    - Test subreddit validity before creating (system auto-validates)
+    - Remove banned or invalid subreddits when prompted
+  </Accordion>
+  
+  <Accordion title="Caption Themes">
+    - Match theme to subreddit content for best results
+    - Custom prompts need detailed instructions (100-500 characters)
+    - Test different themes on the same content for variety
+  </Accordion>
+  
+  <Accordion title="Timing Settings">
+    - Use 3-10 seconds for fast-paced sessions
+    - Use 5-15 seconds for story-driven content
+    - Set wider ranges (3-30) for unpredictability
+    - Manual mode gives complete control (disable auto-advance)
+  </Accordion>
+  
+  <Accordion title="Custom Session Captions">
+    - Keep captions under 500 characters for readability
+    - Use AI generation for consistency in tone
+    - Build narrative flow across slides
+    - Test playback to ensure caption timing works
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Session creation fails">
+    **Check these common issues:**
+    - Invalid subreddit names (must exist and be accessible)
+    - Empty subreddit list after validation
+    - Insufficient credits (25 required for session creation)
+    - File size exceeds 100MB (custom sessions)
+    - Too many files (max 100 images)
+  </Accordion>
+  
+  <Accordion title="Missing captions in player">
+    - Captions generate on-demand (may take 2-3 seconds)
+    - Check for API key errors in session settings
+    - Verify internet connection for AI caption requests
+    - Try regenerating caption with the refresh button
+  </Accordion>
+  
+  <Accordion title="Import fails from Imgchest">
+    - Verify URL is correct and accessible
+    - Check that gallery is public (not private)
+    - Ensure Imgchest API key is configured
+    - Try again if network timeout occurred
+  </Accordion>
+  
+  <Accordion title="Slides missing images">
+    - For Reddit: Media URLs may have expired (refresh media)
+    - For Custom: Files may not have uploaded (check file size)
+    - For Imported: Source images may be deleted from Imgchest
+  </Accordion>
+</AccordionGroup>
+
+## Related Features
+
+- [Smart Captions](/features/smart-captions) - Generate standalone captioned images
+- [Community](/features/community) - Share and discover sessions
+- [Media Vault](/features/media-vault) - Manage your uploaded media

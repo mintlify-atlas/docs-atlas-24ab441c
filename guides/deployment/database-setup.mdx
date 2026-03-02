@@ -1,0 +1,559 @@
+---
+title: 'Database Setup'
+description: 'Complete guide to PostgreSQL database setup with Neon for JOIP Web Application'
+icon: 'database'
+---
+
+## Overview
+
+JOIP Web Application uses PostgreSQL as its primary database, with [Neon](https://neon.tech) as the recommended serverless PostgreSQL provider for production deployments. This guide covers database provisioning, schema setup, connection configuration, and optimization.
+
+## Why Neon?
+
+Neon is the recommended PostgreSQL provider for JOIP because:
+
+- **Serverless Architecture**: Automatic scaling and sleep when idle
+- **Instant Provisioning**: Create databases in seconds
+- **Branching**: Database branches for development/staging
+- **Connection Pooling**: Built-in PgBouncer for connection management
+- **Replit Integration**: Seamless deployment with Replit
+- **Generous Free Tier**: 3 GiB storage, 100 hours compute per month
+- **PostgreSQL 16**: Latest features and performance improvements
+
+## Database Provisioning
+
+### Create Neon Project
+
+<Steps>
+  <Step title="Sign Up for Neon">
+    1. Visit [neon.tech](https://neon.tech)
+    2. Click "Sign Up" and authenticate with GitHub/Google/email
+    3. Verify your email address
+  </Step>
+
+  <Step title="Create New Project">
+    1. Click "Create Project" in the Neon dashboard
+    2. Configure your project:
+       - **Project Name**: `joip-production` (or your preferred name)
+       - **Region**: Choose closest to your Replit region (e.g., US East)
+       - **PostgreSQL Version**: 16 (latest)
+       - **Compute Size**: Start with 0.25 vCPU (free tier)
+    3. Click "Create Project"
+  </Step>
+
+  <Step title="Retrieve Connection String">
+    After creation, Neon displays your connection string:
+
+    ```bash
+    postgresql://joip_user:abc123xyz@ep-cool-name-123456.us-east-2.aws.neon.tech/neondb?sslmode=require
+    ```
+
+    <Note>
+      Copy this string immediately - you'll need it for the `DATABASE_URL` environment variable.
+    </Note>
+  </Step>
+
+  <Step title="Configure Environment Variable">
+    In Replit, add the connection string to Secrets:
+
+    1. Open Tools → Secrets
+    2. Add new secret:
+       - **Key**: `DATABASE_URL`
+       - **Value**: Your Neon connection string
+    3. Save
+  </Step>
+</Steps>
+
+### Alternative Providers
+
+While Neon is recommended, JOIP supports any PostgreSQL provider:
+
+- **[Supabase Database](https://supabase.com)**: Free tier with 500 MB, includes real-time features
+- **[Railway](https://railway.app)**: PostgreSQL with automatic backups
+- **[Render](https://render.com)**: Free PostgreSQL with 90-day retention
+- **Self-Hosted**: Your own PostgreSQL server (ensure SSL/TLS)
+
+<Warning>
+  Always use SSL connections for production databases. Include `?sslmode=require` in connection strings.
+</Warning>
+
+## Database Schema Setup
+
+JOIP uses Drizzle ORM for type-safe database operations with schema defined in `shared/schema.ts`.
+
+### Apply Schema Migrations
+
+<Steps>
+  <Step title="Verify Database Connection">
+    Ensure `DATABASE_URL` is set in environment variables:
+
+    ```bash
+    echo $DATABASE_URL
+    ```
+
+    Should output your connection string (may be redacted in Replit).
+  </Step>
+
+  <Step title="Run Migration Command">
+    Apply all schema changes to your database:
+
+    ```bash
+    npm run db:push
+    ```
+
+    This command:
+    - Reads schema from `shared/schema.ts`
+    - Compares with current database state
+    - Creates/modifies tables, indexes, and constraints
+    - Outputs migration summary
+
+    **Expected Output:**
+    ```
+    Applying schema changes...
+    ✓ Created table: users
+    ✓ Created table: content_sessions
+    ✓ Created table: session_media
+    ✓ Created table: user_media
+    ... (36 total constraints)
+    Migration complete!
+    ```
+  </Step>
+
+  <Step title="Verify Schema">
+    Check that tables were created successfully:
+
+    ```bash
+    # Using psql (if installed)
+    psql $DATABASE_URL -c "\dt"
+
+    # Or connect via Neon dashboard SQL editor
+    ```
+
+    You should see all JOIP tables listed.
+  </Step>
+</Steps>
+
+<Warning>
+  **Production Safety:** Always backup your database before running migrations in production. Use Neon's branching feature to test migrations on a copy first.
+</Warning>
+
+## Database Schema Overview
+
+JOIP's schema includes 36 constraints across multiple tables:
+
+### Core Tables
+
+**users** (`shared/schema.ts`)
+- User profiles and authentication data
+- Fields: `id` (varchar), `email`, `name`, `avatar`, `createdAt`
+- Primary key: `id`
+- Unique constraint: `email`
+
+**content_sessions**
+- Slideshow sessions with configuration
+- Fields: `id` (serial), `userId`, `title`, `subreddits`, `intervalMin/Max`, `transition`, `aiPrompt`, `captionTheme`
+- Foreign key: `userId` → `users.id` (on delete cascade)
+- 13 user reference constraints prevent orphaned records
+
+**session_media**
+- Media items associated with sessions
+- Fields: `id`, `sessionId`, `mediaUrl`, `caption`, `type`, `order`
+- Foreign key: `sessionId` → `content_sessions.id` (on delete cascade)
+- Indexed on: `sessionId`, `order`
+
+**user_media**
+- Personal media vault uploads
+- Fields: `id`, `userId`, `storagePath`, `filename`, `filesize`, `contentType`
+- Foreign key: `userId` → `users.id` (on delete cascade)
+- Supports Supabase Storage integration
+
+### Analytics Tables
+
+**user_usage_stats**
+- Comprehensive usage metrics per user
+- Tracks sessions created, media uploaded, API calls, etc.
+- Updated in real-time via `server/usageTracking.ts`
+
+**user_activity_logs**
+- Detailed activity logging for analytics
+- Fields: `id`, `userId`, `action`, `metadata`, `timestamp`
+- Indexed on: `userId`, `timestamp`
+
+### Community & Sharing
+
+**shared_sessions**
+- Public session sharing with unique codes
+- Fields: `id`, `sessionId`, `shareCode` (UUID), `createdAt`
+- Unique constraint: `shareCode`
+
+**community_sessions** / **community_session_media**
+- Snapshots of public sessions for Community feed
+- Preserves original content even if source is deleted
+
+**community_media**
+- Community copies of shared media items
+- Stored in Supabase `general` bucket for durability
+
+### System Tables
+
+**app_settings**
+- Dynamic application configuration
+
+**admin_users**
+- Administrative access management
+
+**user_favorite_subreddits**
+- Personalized subreddit collections
+
+## Connection String Format
+
+PostgreSQL connection strings follow this format:
+
+```
+postgresql://[user]:[password]@[host]:[port]/[database]?[parameters]
+```
+
+### Components
+
+- **user**: Database username (e.g., `joip_user`)
+- **password**: Database password (URL-encoded if contains special characters)
+- **host**: Server hostname (e.g., `ep-cool-name.us-east-2.aws.neon.tech`)
+- **port**: PostgreSQL port (default: `5432`)
+- **database**: Database name (e.g., `neondb`)
+- **parameters**: Query parameters (e.g., `sslmode=require`)
+
+### Example Connection Strings
+
+<CodeGroup>
+```bash Neon
+DATABASE_URL="postgresql://joip_user:abc123xyz@ep-cool-name-123456.us-east-2.aws.neon.tech/neondb?sslmode=require"
+```
+
+```bash Supabase
+DATABASE_URL="postgresql://postgres:your-password@db.xyzabcdefg123456.supabase.co:5432/postgres?sslmode=require"
+```
+
+```bash Local Development
+DATABASE_URL="postgresql://localhost:5432/joip_dev"
+```
+
+```bash With Special Characters
+# Password: p@ssw0rd! (URL-encoded: p%40ssw0rd%21)
+DATABASE_URL="postgresql://user:p%40ssw0rd%21@host:5432/db?sslmode=require"
+```
+</CodeGroup>
+
+<Note>
+  **URL Encoding:** Passwords containing special characters (`@`, `!`, `#`, etc.) must be URL-encoded in connection strings.
+</Note>
+
+## Connection Pooling
+
+JOIP implements connection pooling for optimal database performance (`server/db.ts`).
+
+### Default Pool Settings
+
+```typescript
+// server/db.ts
+const poolConfig = {
+  max: 20,              // Maximum connections
+  min: 2,               // Minimum connections
+  idle: 10000,          // Idle timeout (10s)
+  connectTimeout: 10,   // Connect timeout (10s)
+  maxLifetime: 3600,    // Max lifetime (1h)
+  statementTimeout: 30000,  // Statement timeout (30s)
+  queryTimeout: 20000   // Query timeout (20s)
+};
+```
+
+### Custom Pool Configuration
+
+Override defaults with environment variables:
+
+```bash
+DB_POOL_MAX=30
+DB_POOL_MIN=5
+DB_POOL_IDLE=15000
+DB_CONNECT_TIMEOUT=15
+DB_MAX_LIFETIME=7200
+DB_STATEMENT_TIMEOUT=60000
+DB_QUERY_TIMEOUT=40000
+```
+
+### Pool Tuning Recommendations
+
+**Small Apps (< 100 concurrent users):**
+```bash
+DB_POOL_MAX=10
+DB_POOL_MIN=2
+```
+
+**Medium Apps (100-1000 users):**
+```bash
+DB_POOL_MAX=20
+DB_POOL_MIN=5
+```
+
+**Large Apps (1000+ users):**
+```bash
+DB_POOL_MAX=50
+DB_POOL_MIN=10
+DB_CONNECT_TIMEOUT=20
+```
+
+<Warning>
+  **Neon Limits:** Free tier supports 100 simultaneous connections. Paid plans offer higher limits. Don't set `DB_POOL_MAX` higher than your database supports.
+</Warning>
+
+## Performance Optimization
+
+### Indexes
+
+JOIP's schema includes performance indexes on frequently queried columns:
+
+```sql
+-- Indexed columns
+CREATE INDEX idx_session_media_sessionid ON session_media(sessionId);
+CREATE INDEX idx_session_media_order ON session_media(order);
+CREATE INDEX idx_user_activity_logs_userid ON user_activity_logs(userId);
+CREATE INDEX idx_user_activity_logs_timestamp ON user_activity_logs(timestamp);
+```
+
+These indexes are automatically created by `npm run db:push`.
+
+### Query Optimization
+
+Drizzle ORM generates efficient queries, but follow these best practices:
+
+1. **Use Select Projections**: Only fetch needed columns
+   ```typescript
+   // Good
+   const users = await db.select({ id: users.id, name: users.name })
+     .from(users);
+
+   // Avoid (fetches all columns)
+   const users = await db.select().from(users);
+   ```
+
+2. **Batch Operations**: Use transactions for multiple inserts
+   ```typescript
+   await db.transaction(async (tx) => {
+     await tx.insert(sessionMedia).values(mediaArray);
+   });
+   ```
+
+3. **Limit Results**: Always paginate large result sets
+   ```typescript
+   const sessions = await db.select()
+     .from(contentSessions)
+     .limit(50)
+     .offset(page * 50);
+   ```
+
+### Database Monitoring
+
+Neon provides built-in monitoring:
+
+1. Open your project in Neon dashboard
+2. Navigate to **Monitoring** tab
+3. View:
+   - Connection count
+   - Query performance
+   - Storage usage
+   - Compute time
+
+Set up alerts for:
+- Connection pool exhaustion
+- Slow query detection
+- Storage capacity warnings
+
+## Backup and Recovery
+
+### Neon Automatic Backups
+
+Neon automatically backs up your database:
+
+- **Frequency**: Continuous (Write-Ahead Log streaming)
+- **Retention**: 7 days (free tier), 30 days (paid plans)
+- **Point-in-Time Recovery**: Restore to any second within retention period
+
+### Manual Backups
+
+Create manual backups using `pg_dump`:
+
+```bash
+# Backup to file
+pg_dump $DATABASE_URL > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Backup with compression
+pg_dump $DATABASE_URL | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
+
+# Backup specific tables
+pg_dump $DATABASE_URL -t users -t content_sessions > partial_backup.sql
+```
+
+### Restore from Backup
+
+```bash
+# Restore from SQL file
+psql $DATABASE_URL < backup_20250302_120000.sql
+
+# Restore from compressed file
+gunzip -c backup_20250302_120000.sql.gz | psql $DATABASE_URL
+```
+
+<Warning>
+  **Production Restores:** Test restores on a Neon branch before applying to production database.
+</Warning>
+
+## Database Branching (Neon)
+
+Neon's branching feature allows safe testing of schema changes:
+
+<Steps>
+  <Step title="Create Branch">
+    1. Open Neon dashboard
+    2. Navigate to your project
+    3. Click "Branches" → "Create Branch"
+    4. Name: `staging` or `migration-test`
+    5. Select parent branch: `main`
+  </Step>
+
+  <Step title="Get Branch Connection String">
+    Neon generates a new connection string for the branch:
+
+    ```bash
+    postgresql://user:pass@ep-branch-name.neon.tech/neondb?sslmode=require
+    ```
+  </Step>
+
+  <Step title="Test Migrations">
+    Use the branch connection string for testing:
+
+    ```bash
+    # Temporarily set branch URL
+    export DATABASE_URL="postgresql://user:pass@ep-branch.neon.tech/neondb"
+
+    # Test migration
+    npm run db:push
+
+    # Verify changes
+    # ... test your application ...
+    ```
+  </Step>
+
+  <Step title="Merge or Delete">
+    After testing:
+    - **Success**: Apply migration to main branch
+    - **Issues**: Delete branch and revise schema
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Connection Refused
+
+**Symptom:** `ECONNREFUSED` or `Connection refused` errors
+
+**Solutions:**
+1. Verify `DATABASE_URL` is correct and includes port (`:5432`)
+2. Check database is not paused (Neon free tier auto-pauses)
+3. Verify SSL is required: `?sslmode=require`
+4. Test connection with `psql $DATABASE_URL`
+
+### SSL/TLS Errors
+
+**Symptom:** `SSL connection required` or certificate errors
+
+**Solutions:**
+1. Ensure connection string includes `?sslmode=require`
+2. For self-signed certs, use `?sslmode=disable` (dev only)
+3. Update `pg` package: `npm update pg`
+
+### Pool Exhaustion
+
+**Symptom:** `sorry, too many clients already` errors
+
+**Solutions:**
+1. Check for connection leaks in code
+2. Reduce `DB_POOL_MAX` to match database limits
+3. Enable Neon's connection pooling (PgBouncer)
+4. Upgrade Neon plan for more connections
+
+### Migration Failures
+
+**Symptom:** `npm run db:push` fails with schema errors
+
+**Solutions:**
+1. Verify database is empty for initial setup
+2. Check for existing tables with conflicts
+3. Review `shared/schema.ts` for syntax errors
+4. Drop all tables and retry (dev only): `psql $DATABASE_URL -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"`
+
+### Slow Queries
+
+**Symptom:** Application timeouts or slow responses
+
+**Solutions:**
+1. Check Neon monitoring for slow queries
+2. Add indexes to frequently queried columns
+3. Optimize queries (use projections, limits)
+4. Upgrade Neon compute size
+5. Enable query logging: `DB_LOG_QUERIES=true`
+
+## Security Best Practices
+
+<Warning>
+  **Database Security Checklist:**
+  - ✓ Always use SSL connections (`?sslmode=require`)
+  - ✓ Never commit `DATABASE_URL` to Git
+  - ✓ Use Replit Secrets for connection strings
+  - ✓ Rotate database passwords every 90 days
+  - ✓ Enable Neon IP allowlist (paid plans)
+  - ✓ Use read-only credentials for reporting
+  - ✓ Regularly backup critical data
+  - ✓ Monitor for unauthorized access
+</Warning>
+
+### Credential Rotation
+
+Rotate database credentials periodically:
+
+<Steps>
+  <Step title="Create New User">
+    ```sql
+    CREATE USER joip_user_new WITH PASSWORD 'new_secure_password';
+    GRANT ALL PRIVILEGES ON DATABASE neondb TO joip_user_new;
+    GRANT ALL ON ALL TABLES IN SCHEMA public TO joip_user_new;
+    ```
+  </Step>
+
+  <Step title="Update Connection String">
+    Update `DATABASE_URL` in Replit Secrets with new credentials.
+  </Step>
+
+  <Step title="Restart Application">
+    Restart to use new credentials.
+  </Step>
+
+  <Step title="Revoke Old User">
+    After verifying:
+    ```sql
+    DROP USER joip_user_old;
+    ```
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Storage Configuration" icon="cloud" href="/guides/deployment/storage-configuration">
+    Setup Supabase Storage for file uploads
+  </Card>
+  <Card title="Environment Variables" icon="gear" href="/guides/deployment/environment-variables">
+    Complete environment variable reference
+  </Card>
+  <Card title="Deploy on Replit" icon="rocket" href="/guides/deployment/replit">
+    Deploy your configured database to Replit
+  </Card>
+</CardGroup>

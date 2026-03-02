@@ -1,0 +1,664 @@
+---
+title: 'Error Handling'
+description: 'Error response formats and error codes'
+---
+
+## Overview
+
+The JOIP API uses standard HTTP status codes and returns consistent JSON error responses to help you handle errors gracefully.
+
+## Error Response Format
+
+All error responses follow a consistent structure:
+
+```json
+{
+  "error": "Error Type",
+  "message": "Human-readable error description",
+  "code": "ERROR_CODE",
+  "details": {}
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `error` | string | Error category or type |
+| `message` | string | Human-readable error message |
+| `code` | string | Machine-readable error code (optional) |
+| `details` | object | Additional context (optional) |
+
+## HTTP Status Codes
+
+### Success Codes
+
+| Code | Description | Usage |
+|------|-------------|-------|
+| `200` | OK | Successful GET, PATCH, DELETE |
+| `201` | Created | Successful POST creating resource |
+| `302` | Found | Redirect after login/logout |
+
+### Client Error Codes (4xx)
+
+#### 400 Bad Request
+
+Invalid request data or validation errors.
+
+**Common causes**:
+- Missing required fields
+- Invalid data format
+- Validation failures
+
+**Example**:
+```json
+{
+  "error": "Validation Error",
+  "message": "Validation failed: title is required"
+}
+```
+
+**Example from Zod validation**:
+```json
+{
+  "error": "Bad Request",
+  "message": "Invalid input: Expected array, received string at 'subreddits'"
+}
+```
+
+#### 401 Unauthorized
+
+Missing or invalid authentication.
+
+**Common causes**:
+- No session cookie
+- Expired session
+- Invalid credentials
+
+**Example**:
+```json
+{
+  "message": "Unauthorized"
+}
+```
+
+**From authentication middleware** (server/localAuth.ts:573-581):
+```javascript
+export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  if (!getUserIdOrNull(req)) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
+};
+```
+
+#### 402 Payment Required
+
+Insufficient credits for feature access.
+
+**Example** (server/routes.ts:1472-1479):
+```json
+{
+  "error": "Insufficient credits",
+  "code": "INSUFFICIENT_CREDITS",
+  "required": 10,
+  "current": 5,
+  "featureKey": "session_create"
+}
+```
+
+#### 403 Forbidden
+
+Authenticated but lacking permissions.
+
+**Common causes**:
+- Non-admin accessing admin endpoints
+- Accessing another user's private resources
+- Feature restricted to premium users
+
+**Example**:
+```json
+{
+  "error": "You do not have permission to access this session"
+}
+```
+
+**Premium-only feature** (server/routes.ts:1484-1489):
+```json
+{
+  "error": "This feature is only available for Premium subscribers",
+  "code": "PREMIUM_ONLY",
+  "featureKey": "session_create"
+}
+```
+
+#### 404 Not Found
+
+Requested resource doesn't exist.
+
+**Example**:
+```json
+{
+  "message": "Session not found"
+}
+```
+
+**Unknown API routes** (server/index.ts:166-168):
+```json
+{
+  "message": "Not Found"
+}
+```
+
+#### 429 Too Many Requests
+
+Rate limit exceeded.
+
+**Example** (server/rateLimiter.ts:90-95):
+```json
+{
+  "error": "Too Many Requests",
+  "message": "Rate limit exceeded. Please try again later.",
+  "retryAfter": 900
+}
+```
+
+With headers:
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 2026-03-02T11:15:00.000Z
+```
+
+### Server Error Codes (5xx)
+
+#### 500 Internal Server Error
+
+Unexpected server error.
+
+**Example** (server/index.ts:187-193):
+```json
+{
+  "message": "Internal Server Error"
+}
+```
+
+**Common causes**:
+- Database connection failures
+- Unhandled exceptions
+- External API failures
+
+#### 503 Service Unavailable
+
+Service temporarily unavailable or not configured.
+
+**Storage unreachable**:
+```json
+{
+  "error": "Supabase storage is unreachable",
+  "code": "STORAGE_UNREACHABLE",
+  "message": "Manual sessions require storage. Please check your Supabase configuration."
+}
+```
+
+**Feature not configured**:
+```json
+{
+  "error": "Session pricing is not configured",
+  "code": "FEATURE_PRICING_MISSING",
+  "featureKey": "session_create"
+}
+```
+
+## Error Codes Reference
+
+### Authentication Errors
+
+| Code | Status | Description |
+|------|--------|-------------|
+| `UNAUTHORIZED` | 401 | Missing or invalid authentication |
+| `FORBIDDEN` | 403 | Insufficient permissions |
+
+### Validation Errors
+
+| Code | Status | Description |
+|------|--------|-------------|
+| `VALIDATION_ERROR` | 400 | Input validation failed |
+| `INVALID_INPUT` | 400 | Invalid data format |
+| `MISSING_FIELD` | 400 | Required field missing |
+
+### Resource Errors
+
+| Code | Status | Description |
+|------|--------|-------------|
+| `NOT_FOUND` | 404 | Resource doesn't exist |
+| `ALREADY_EXISTS` | 400 | Resource already exists |
+| `RESOURCE_DELETED` | 404 | Resource has been deleted |
+
+### Credit System Errors
+
+| Code | Status | Description |
+|------|--------|-------------|
+| `INSUFFICIENT_CREDITS` | 402 | Not enough credits |
+| `PREMIUM_ONLY` | 403 | Feature requires premium |
+| `FEATURE_PRICING_MISSING` | 503 | Feature pricing not configured |
+
+### Storage Errors
+
+| Code | Status | Description |
+|------|--------|-------------|
+| `STORAGE_CONFIG_ERROR` | 503 | Storage not configured |
+| `STORAGE_UNREACHABLE` | 503 | Cannot connect to storage |
+| `STORAGE_PREFLIGHT_FAILED` | 503 | Storage health check failed |
+| `UPLOAD_FAILED` | 500 | File upload failed |
+
+### Rate Limit Errors
+
+| Code | Status | Description |
+|------|--------|-------------|
+| `RATE_LIMIT_EXCEEDED` | 429 | Too many requests |
+
+## Validation Errors
+
+### Zod Validation
+
+The API uses Zod for request validation. Validation errors include detailed information:
+
+```javascript
+// From server/routes.ts:80-82
+import { ZodError } from "zod";
+import { fromZodError } from "zod-validation-error";
+```
+
+**Example validation error**:
+```json
+{
+  "error": "Bad Request",
+  "message": "Validation failed",
+  "details": {
+    "issues": [
+      {
+        "code": "invalid_type",
+        "expected": "string",
+        "received": "number",
+        "path": ["title"],
+        "message": "Expected string, received number"
+      }
+    ]
+  }
+}
+```
+
+### Input Sanitization
+
+User inputs are sanitized before validation:
+
+```javascript
+// From server/userValidation.ts
+export function sanitizeUserInput(input: any): any {
+  if (typeof input !== 'object' || input === null) {
+    return input;
+  }
+  
+  const sanitized: any = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (typeof value === 'string') {
+      sanitized[key] = value.trim();
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+}
+```
+
+## Error Handling Examples
+
+### JavaScript/TypeScript
+
+```typescript
+try {
+  const response = await fetch('/api/sessions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({
+      title: 'My Session',
+      subreddits: ['gonewild']
+    })
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    
+    switch (response.status) {
+      case 401:
+        // Redirect to login
+        window.location.href = '/login';
+        break;
+        
+      case 402:
+        // Show credit purchase modal
+        showCreditPurchaseModal(error.required - error.current);
+        break;
+        
+      case 429:
+        // Show rate limit message
+        const resetTime = new Date(response.headers.get('X-RateLimit-Reset'));
+        showError(`Rate limit exceeded. Try again at ${resetTime.toLocaleTimeString()}`);
+        break;
+        
+      case 503:
+        if (error.code === 'STORAGE_UNREACHABLE') {
+          showError('Storage service is temporarily unavailable');
+        }
+        break;
+        
+      default:
+        showError(error.message || 'An error occurred');
+    }
+    
+    return;
+  }
+  
+  const session = await response.json();
+  console.log('Session created:', session);
+  
+} catch (err) {
+  // Network error or JSON parse error
+  console.error('Request failed:', err);
+  showError('Network error. Please check your connection.');
+}
+```
+
+### Python
+
+```python
+import requests
+from datetime import datetime
+
+try:
+    response = requests.post(
+        'http://localhost:5000/api/sessions',
+        json={
+            'title': 'My Session',
+            'subreddits': ['gonewild']
+        },
+        cookies=session_cookies
+    )
+    
+    response.raise_for_status()
+    session = response.json()
+    print(f"Session created: {session['id']}")
+    
+except requests.exceptions.HTTPError as e:
+    error_data = e.response.json()
+    
+    if e.response.status_code == 401:
+        print("Authentication required")
+        # Redirect to login
+        
+    elif e.response.status_code == 402:
+        print(f"Insufficient credits: need {error_data['required']}")
+        # Show credit purchase option
+        
+    elif e.response.status_code == 429:
+        retry_after = error_data.get('retryAfter', 900)
+        print(f"Rate limited. Retry in {retry_after} seconds")
+        
+    elif e.response.status_code == 503:
+        if error_data.get('code') == 'STORAGE_UNREACHABLE':
+            print("Storage service unavailable")
+        
+    else:
+        print(f"Error: {error_data.get('message', 'Unknown error')}")
+        
+except requests.exceptions.RequestException as e:
+    print(f"Network error: {e}")
+```
+
+### cURL with Error Handling
+
+```bash
+#!/bin/bash
+
+response=$(curl -s -w "\n%{http_code}" \
+  -X POST http://localhost:5000/api/sessions \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{
+    "title": "My Session",
+    "subreddits": ["gonewild"]
+  }')
+
+body=$(echo "$response" | head -n -1)
+status=$(echo "$response" | tail -n 1)
+
+case $status in
+  200|201)
+    echo "Success: $body"
+    ;;
+  401)
+    echo "Error: Unauthorized. Please login."
+    ;;
+  402)
+    echo "Error: Insufficient credits."
+    ;;
+  429)
+    echo "Error: Rate limit exceeded."
+    ;;
+  503)
+    echo "Error: Service unavailable."
+    ;;
+  *)
+    echo "Error ($status): $body"
+    ;;
+esac
+```
+
+## Common Error Scenarios
+
+### Creating Session Without Authentication
+
+**Request**:
+```bash
+curl -X POST http://localhost:5000/api/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Test","subreddits":["test"]}'
+```
+
+**Response** (401):
+```json
+{
+  "message": "Unauthorized"
+}
+```
+
+**Solution**: Include session cookie from login.
+
+### Invalid Session Data
+
+**Request**:
+```bash
+curl -X POST http://localhost:5000/api/sessions \
+  -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{"subreddits":["test"]}'
+```
+
+**Response** (400):
+```json
+{
+  "error": "Validation Error",
+  "message": "Validation failed: title is required"
+}
+```
+
+**Solution**: Include required `title` field.
+
+### Accessing Non-Existent Resource
+
+**Request**:
+```bash
+curl -X GET http://localhost:5000/api/sessions/99999 \
+  -b cookies.txt
+```
+
+**Response** (404):
+```json
+{
+  "error": "Session not found"
+}
+```
+
+**Solution**: Verify session ID exists.
+
+### Rate Limit Exceeded
+
+**Request** (6th login attempt in 15 minutes):
+```bash
+curl -X POST http://localhost:5000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"wrong"}'
+```
+
+**Response** (429):
+```json
+{
+  "error": "Too Many Requests",
+  "message": "Too many authentication attempts. Please try again later.",
+  "retryAfter": 900
+}
+```
+
+**Solution**: Wait 15 minutes or use rate limit headers to track usage.
+
+### Storage Service Down
+
+**Request**:
+```bash
+curl -X POST http://localhost:5000/api/sessions/manual \
+  -b cookies.txt \
+  -F "title=Test" \
+  -F "file=@image.jpg"
+```
+
+**Response** (503):
+```json
+{
+  "error": "Supabase storage is unreachable",
+  "code": "STORAGE_UNREACHABLE",
+  "message": "Manual sessions require storage. Please check your Supabase configuration."
+}
+```
+
+**Solution**: Check Supabase service status and configuration.
+
+## Error Logging
+
+All errors are logged server-side:
+
+```javascript
+// From server/index.ts:187-193
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+
+  logger.error('Server error:', err);
+  res.status(status).json({ message });
+});
+```
+
+## Best Practices
+
+### 1. Always Check Response Status
+
+```javascript
+if (!response.ok) {
+  const error = await response.json();
+  throw new Error(error.message);
+}
+```
+
+### 2. Handle Rate Limits Gracefully
+
+```javascript
+const remaining = response.headers.get('X-RateLimit-Remaining');
+if (parseInt(remaining) < 10) {
+  console.warn('Approaching rate limit!');
+}
+```
+
+### 3. Provide User-Friendly Messages
+
+```javascript
+const friendlyMessages = {
+  401: 'Please log in to continue',
+  402: 'You need more credits for this action',
+  403: 'You don\'t have permission to do that',
+  404: 'That content could not be found',
+  429: 'You\'re doing that too often. Please wait.',
+  500: 'Something went wrong. Please try again.',
+  503: 'This service is temporarily unavailable'
+};
+
+const message = friendlyMessages[status] || error.message;
+```
+
+### 4. Implement Retry Logic
+
+```javascript
+async function fetchWithRetry(url, options, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch(url, options);
+      
+      // Don't retry client errors (4xx)
+      if (response.status >= 400 && response.status < 500) {
+        return response;
+      }
+      
+      if (response.ok) {
+        return response;
+      }
+      
+      // Retry server errors (5xx)
+      if (i < maxRetries - 1) {
+        await new Promise(resolve => 
+          setTimeout(resolve, 1000 * Math.pow(2, i))
+        );
+      }
+    } catch (err) {
+      if (i === maxRetries - 1) throw err;
+    }
+  }
+}
+```
+
+### 5. Log Errors for Debugging
+
+```javascript
+try {
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    const error = await response.json();
+    console.error('API Error:', {
+      url,
+      status: response.status,
+      error,
+      timestamp: new Date().toISOString()
+    });
+  }
+} catch (err) {
+  console.error('Request failed:', err);
+}
+```
+
+## Next Steps
+
+- [API Introduction](/api/introduction) - Overview of available endpoints
+- [Authentication](/api/authentication) - Handle authentication errors
+- [Rate Limiting](/api/rate-limiting) - Avoid rate limit errors

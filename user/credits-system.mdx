@@ -1,0 +1,845 @@
+---
+title: 'Credits System'
+description: 'Understanding JOIP credits, pricing, tiers, and how to manage your credit balance'
+icon: 'coins'
+---
+
+## Overview
+
+JOIP uses a credit-based system for premium features. Credits are the virtual currency that powers AI generation, session creation, and other advanced functionality.
+
+### How Credits Work
+
+- **1 Credit = 1 Feature Use** (approximately)
+- Credits are deducted when you use paid features
+- Balance is tracked in real-time
+- Transactions are logged for full transparency
+- Monthly allocations based on your tier
+
+## Getting Credits
+
+### New User Bonus
+
+Every new user receives **50 free credits** upon account creation to get started.
+
+### Monthly Allocations
+
+Depending on your tier, you receive credits monthly:
+
+| Tier | Monthly Credits | Can Purchase Extra |
+|------|----------------|-------------------|
+| Free | 50 | No |
+| JOI-Curious | 1,000 | Yes |
+| Full Access | 2,500 | Yes |
+| VIP | 5,000 | Yes |
+
+**Important:** Monthly allocations use a **"use-it-or-lose-it"** model:
+- Your balance is **reset** to your monthly allocation amount
+- Unused credits do **not** roll over to the next month
+- Purchased credits are tracked separately in lifetime stats
+
+### Purchasing Credits
+
+You can purchase credit packages if your tier allows it:
+
+| Package | Credits | Price |
+|---------|---------|-------|
+| Starter | 250 | $14.99 |
+| Pro | 1,000 | $49.99 (Most Popular) |
+| Power User | 2,500 | $99.99 (Best Value) |
+
+**Payment Methods:**
+- PayGate (Cryptocurrency: USDC on Polygon)
+- Telegram Stars (in-app payments)
+- Thirdweb (Web3 payments)
+
+### Earning Credits
+
+**Referral Program:**
+- Refer a friend: **+10 credits** for you
+- New user gets: **+25 bonus credits**
+- No limit on referrals (subject to rate limiting)
+
+See [Referral Program](/user/referrals) for details.
+
+**Daily Login Bonus:**
+- Coming soon: Daily login rewards
+- Tracked via `lastDailyBonusAt` field
+
+## Feature Pricing
+
+### Current Pricing (March 2026)
+
+<AccordionGroup>
+  <Accordion title="Smart Caption - 10 credits" icon="wand-magic-sparkles">
+    Generate AI-powered NSFW captions for images.
+
+    **What you get:**
+    - Contextual caption based on image content
+    - Choice of themes (JOI, Forced-Bi, Beta, CBT, Cuckold)
+    - Custom prompt support
+    - High-quality captions using OpenAI/OpenRouter
+
+    **Cost:** 10 credits per image
+  </Accordion>
+
+  <Accordion title="BabeCock Generate - 20 credits" icon="images">
+    Create composite babecock images.
+
+    **What you get:**
+    - Automatic layout detection (side-by-side or top-bottom)
+    - Smart cropping and positioning
+    - High-quality output optimized for viewing
+
+    **Cost:** 20 credits per generation
+  </Accordion>
+
+  <Accordion title="BabeCock Remix - 10 credits" icon="shuffle">
+    Remix an existing babecock image with new content.
+
+    **What you get:**
+    - Replace babe or cock side
+    - Preserve original layout
+    - Quick regeneration
+
+    **Cost:** 10 credits per remix
+  </Accordion>
+
+  <Accordion title="HypnoCocks Generate - 25 credits" icon="circle-half-stroke">
+    Generate animated HypnoCocks WebP images.
+
+    **What you get:**
+    - Animated WebP output
+    - Hypnotic spiral effects
+    - Customizable content
+
+    **Cost:** 25 credits per generation
+  </Accordion>
+
+  <Accordion title="Session Create - 25 credits" icon="film">
+    Create or save a JOIP session.
+
+    **What you get:**
+    - Reddit-based sessions with automatic media fetching
+    - Manual sessions with custom uploads
+    - Imported sessions from Imgchest
+    - Full session configuration (timing, transitions, themes)
+
+    **Cost:** 25 credits per session creation
+  </Accordion>
+
+  <Accordion title="Session Slide View - 1 credit" icon="eye">
+    Per-slide billing during session playback.
+
+    **How it works:**
+    - Charged once per slide when it first appears
+    - Subsequent views of the same slide in the same play session are free
+    - Only applies to sessions with AI-generated captions
+    - Manual sessions with pre-written captions are not charged per slide
+
+    **Cost:** 1 credit per unique slide appearance
+
+    **Example:**
+    - Session with 10 slides = 10 credits for first full playthrough
+    - Rewatching same session immediately = 0 additional credits
+    - New play session later = 10 credits again
+  </Accordion>
+
+  <Accordion title="BetaCensor Image - 5 credits" icon="eye-slash">
+    AI-powered NSFW image censoring.
+
+    **What you get:**
+    - Intelligent detection of NSFW regions
+    - Pixelation or blur effects
+    - Adjustable censoring strength
+
+    **Cost:** 5 credits per image
+  </Accordion>
+
+  <Accordion title="AI Undress (Low Quality) - 25 credits" icon="shirt">
+    Transform images using Freepik AI.
+
+    **What you get:**
+    - Fast processing (30-60 seconds)
+    - Good quality output
+    - Powered by Freepik Seedream v4.5 Edit
+
+    **Cost:** 25 credits per generation
+  </Accordion>
+
+  <Accordion title="AI Undress (High Quality) - 45 credits" icon="sparkles">
+    Premium transformations using xAI/Grok.
+
+    **What you get:**
+    - Higher quality results
+    - More realistic outputs
+    - Advanced AI model
+
+    **Cost:** 45 credits per generation
+  </Accordion>
+
+  <Accordion title="Batch Caption Rewrite - 8 credits per slide" icon="pen-to-square">
+    Rewrite all captions in a session with a new theme.
+
+    **What you get:**
+    - Bulk caption regeneration
+    - Theme consistency across entire session
+    - Preserves session structure
+
+    **Cost:** 8 credits × number of slides
+
+    **Example:** 20-slide session = 160 credits
+  </Accordion>
+</AccordionGroup>
+
+### Legacy Features (Disabled)
+
+These features have been replaced by newer billing models:
+
+- ~~Session Play (Legacy)~~ - 25 credits per session (replaced by per-slide billing)
+- ~~Manual Session Create (Legacy)~~ - 30 credits (now unified with session_create)
+- ~~Import JOIP (Legacy)~~ - 20 credits (now unified with session_create)
+- ~~AI Undress (Legacy Alias)~~ - 25 credits (replaced by low/high quality options)
+
+## Credit Balance
+
+### Checking Your Balance
+
+**Client-Side:**
+```typescript
+import { useAuth } from '@/lib/AuthContext';
+
+function MyComponent() {
+  const { user } = useAuth();
+  
+  if (user?.credits) {
+    const { balance, tier, isLowBalance, nextAllocationDate } = user.credits;
+    
+    return (
+      <div>
+        <p>Balance: {balance} credits</p>
+        <p>Tier: {tier}</p>
+        {isLowBalance && <Warning>Low balance!</Warning>}
+        <p>Next allocation: {new Date(nextAllocationDate).toLocaleDateString()}</p>
+      </div>
+    );
+  }
+}
+```
+
+**API Endpoint:**
+```bash
+GET /api/auth/user
+
+Response:
+{
+  "id": "user123",
+  "email": "user@example.com",
+  "credits": {
+    "balance": 150,
+    "tier": "free",
+    "isLowBalance": false,
+    "nextAllocationDate": "2026-04-01T00:00:00.000Z"
+  }
+}
+```
+
+### Low Balance Warning
+
+The system warns you when your balance falls below **20 credits** (configurable).
+
+```typescript
+// Low balance threshold check
+const threshold = 20; // Default
+const isLowBalance = balance < threshold;
+```
+
+## Transaction History
+
+### Viewing Transactions
+
+All credit transactions are logged with full details:
+
+```typescript
+interface CreditTransaction {
+  id: number;
+  userId: string;
+  amount: number;              // Positive = credit, Negative = debit
+  balanceAfter: number;        // Balance after this transaction
+  type: 'purchase' | 'allocation' | 'usage' | 'refund' | 'admin_grant' | 'bonus';
+  feature?: string;            // Which feature was used (for 'usage' type)
+  description: string;         // Human-readable description
+  relatedEntityType?: string;  // 'session', 'media', etc.
+  relatedEntityId?: string;    // ID of related entity
+  metadata?: object;           // Additional transaction data
+  createdAt: timestamp;
+}
+```
+
+### Transaction Types
+
+| Type | Description | Amount |
+|------|-------------|--------|
+| `purchase` | Bought credits via payment | Positive |
+| `allocation` | Monthly tier allocation | Positive |
+| `usage` | Used a paid feature | Negative |
+| `refund` | Refund for failed operation | Positive |
+| `admin_grant` | Admin manually granted credits | Positive |
+| `bonus` | Referral or promotional bonus | Positive |
+
+### API Endpoints
+
+<AccordionGroup>
+  <Accordion title="GET /api/credits/balance" icon="coins">
+    Get current credit balance and tier info.
+
+    **Response:**
+    ```json
+    {
+      "balance": 150,
+      "tier": "free",
+      "nextAllocationDate": "2026-04-01T00:00:00.000Z",
+      "isLowBalance": false
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="GET /api/credits/transactions" icon="receipt">
+    Get paginated transaction history.
+
+    **Query Parameters:**
+    - `page` - Page number (default: 1)
+    - `limit` - Items per page (default: 20)
+
+    **Response:**
+    ```json
+    {
+      "transactions": [
+        {
+          "id": 123,
+          "amount": -10,
+          "balanceAfter": 140,
+          "type": "usage",
+          "feature": "smart_caption",
+          "description": "Used Smart Caption",
+          "createdAt": "2026-03-02T10:30:00.000Z"
+        }
+      ],
+      "hasMore": true,
+      "total": 45
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="GET /api/credits/stats" icon="chart-line">
+    Get credit usage statistics.
+
+    **Response:**
+    ```json
+    {
+      "totalSpent": 350,
+      "mostUsedFeatures": [
+        {
+          "feature": "smart_caption",
+          "count": 15,
+          "totalCredits": 150
+        },
+        {
+          "feature": "session_create",
+          "count": 4,
+          "totalCredits": 100
+        }
+      ]
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="GET /api/credits/pricing" icon="tags">
+    Get all active feature pricing.
+
+    **Response:**
+    ```json
+    [
+      {
+        "featureKey": "smart_caption",
+        "displayName": "Smart Caption",
+        "creditsRequired": 10,
+        "isPremiumOnly": false,
+        "description": "Generate AI caption for an image"
+      }
+    ]
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Credit Mechanics
+
+### Deduction Process
+
+When you use a paid feature:
+
+1. **Feature Request**
+   - User initiates feature (e.g., generate caption)
+   - System identifies feature key (e.g., `smart_caption`)
+
+2. **Atomic Check & Deduct**
+   - Database transaction with row-level locking
+   - Prevents race conditions from concurrent requests
+   - Either succeeds completely or fails (no partial deductions)
+
+3. **Transaction Logging**
+   - Records amount, feature, balance after
+   - Logs related entity (e.g., which session/media)
+   - Timestamps for audit trail
+
+**Implementation:**
+```typescript
+// Atomic check and deduct in a single transaction
+const result = await creditService.checkAndDeductCredits(
+  userId,
+  'smart_caption',
+  {
+    relatedEntityType: 'media',
+    relatedEntityId: mediaId,
+    description: 'Generated caption for uploaded image'
+  }
+);
+
+if (!result.success) {
+  if (result.error === 'insufficient_credits') {
+    return res.status(402).json({
+      error: 'Insufficient credits',
+      required: result.required,
+      current: result.current
+    });
+  }
+  // Handle other errors...
+}
+
+// Success: proceed with feature
+```
+
+### Refund Process
+
+If a paid operation fails after credits are deducted:
+
+1. **Automatic Refund**
+   - System detects failure (error during AI generation, etc.)
+   - Credits are automatically returned
+   - Refund transaction logged
+
+2. **Example:**
+   ```typescript
+   // AI Undress generation failed
+   await creditService.addCredits(
+     userId,
+     45, // Refund amount
+     'refund',
+     'AI Undress generation failed - refunded',
+     {
+       originalTransactionId: txId,
+       reason: 'generation_timeout'
+     }
+   );
+   ```
+
+### Race Condition Prevention
+
+The credit system uses PostgreSQL row-level locking:
+
+```sql
+-- Lock user's credit row during transaction
+SELECT * FROM user_credits
+WHERE user_id = $1
+FOR UPDATE;
+
+-- Check balance
+IF balance >= required THEN
+  -- Deduct credits
+  UPDATE user_credits
+  SET balance = balance - required,
+      lifetime_used = lifetime_used + required
+  WHERE user_id = $1;
+  
+  -- Log transaction
+  INSERT INTO credit_transactions (...) VALUES (...);
+  
+  COMMIT;
+ELSE
+  ROLLBACK;
+END IF;
+```
+
+**Benefits:**
+- No double-charging even with concurrent requests
+- Balance always consistent
+- Transaction history always accurate
+
+## Tier System
+
+### Available Tiers
+
+<CardGroup cols={2}>
+  <Card title="Free" icon="seedling">
+    **Monthly Credits:** 50
+    
+    **Features:**
+    - All basic features
+    - Cannot purchase extra credits
+    - Use-it-or-lose-it allocation
+    
+    **Best for:** Trying out JOIP
+  </Card>
+
+  <Card title="JOI-Curious" icon="compass">
+    **Monthly Credits:** 1,000
+    
+    **Features:**
+    - All features unlocked
+    - Can purchase credit packages
+    - Priority support
+    
+    **Best for:** Regular users
+  </Card>
+
+  <Card title="Full Access" icon="rocket">
+    **Monthly Credits:** 2,500
+    
+    **Features:**
+    - All features unlocked
+    - Can purchase credit packages
+    - Priority support
+    - Early access to new features
+    
+    **Best for:** Power users
+  </Card>
+
+  <Card title="VIP" icon="crown">
+    **Monthly Credits:** 5,000
+    
+    **Features:**
+    - All features unlocked
+    - Can purchase credit packages
+    - Priority support
+    - Early access to new features
+    - VIP Discord role
+    
+    **Best for:** Enthusiasts and supporters
+  </Card>
+</CardGroup>
+
+### Tier Management
+
+**Upgrade/Downgrade:**
+- Contact admin to change tiers
+- Changes take effect on next allocation cycle
+- Current balance preserved during tier change
+
+**API (Admin Only):**
+```typescript
+POST /api/admin/users/:userId/tier
+
+Request:
+{
+  "tier": "full_access"
+}
+
+Response:
+{
+  "userId": "user123",
+  "tier": "full_access",
+  "monthlyAllocation": 2500,
+  "balance": 150 // Preserved
+}
+```
+
+## Credit Packages
+
+### Purchasing Flow
+
+1. **Select Package**
+   - View available packages at `/credits/purchase`
+   - Choose payment method (PayGate, Telegram Stars, Thirdweb)
+
+2. **Payment Session**
+   - System creates payment session in database
+   - Generates unique payment ID
+   - Sets expiration (typically 1 hour)
+
+3. **Payment Processing**
+   - User completes payment via provider
+   - Provider sends callback to server
+   - Server validates payment authenticity
+
+4. **Credit Delivery**
+   - Upon successful payment verification:
+   - Credits added to account
+   - Transaction logged as type `purchase`
+   - Payment session marked as `completed`
+
+### Payment Session Structure
+
+```typescript
+interface PaymentSession {
+  id: string;                    // UUID v4
+  userId: string;
+  packageId: number;
+  creditsAmount: number;         // Credits to be delivered
+  priceUsd: number;              // Price in cents
+  paymentMethod: 'paygate' | 'telegram' | 'thirdweb';
+  status: 'pending' | 'completed' | 'failed' | 'expired' | 'refunded';
+  
+  // PayGate-specific
+  addressIn?: string;            // Encrypted payment address
+  polygonAddressIn?: string;     // Decrypted address (for callback matching)
+  coinType?: string;             // e.g., "polygon_usdc"
+  txnIdIn?: string;              // Provider → order wallet
+  txnIdOut?: string;             // Order wallet → merchant
+  
+  // Telegram-specific
+  telegramPaymentId?: string;    // Telegram charge ID
+  telegramExpectedStars?: number;// Stars price locked at creation
+  
+  // Thirdweb-specific
+  thirdwebPaymentId?: string;
+  thirdwebTransactionHash?: string;
+  
+  createdAt: timestamp;
+  expiresAt: timestamp;
+  callbackReceivedAt?: timestamp;
+}
+```
+
+### Callback Security
+
+Payment callbacks are verified to prevent fraud:
+
+1. **PayGate:**
+   - Validates `polygonAddressIn` matches session
+   - Checks `callbackSecretHash` if provided
+   - Verifies transaction amounts
+
+2. **Telegram:**
+   - Validates Telegram charge ID
+   - Verifies user ID matches session
+   - Checks Stars amount matches expected
+
+3. **Thirdweb:**
+   - Validates payment ID
+   - Verifies blockchain transaction hash
+   - Checks transaction confirmation
+
+## Admin Features
+
+### Manual Credit Grants
+
+Admins can manually grant credits to users:
+
+```typescript
+POST /api/admin/credits/grant
+
+Request:
+{
+  "userId": "user123",
+  "amount": 100,
+  "reason": "Compensation for bug report"
+}
+
+Response:
+{
+  "success": true,
+  "newBalance": 250,
+  "transactionId": 456
+}
+```
+
+### Feature Pricing Management
+
+**Update Pricing:**
+```typescript
+PATCH /api/admin/credits/pricing/:featureKey
+
+Request:
+{
+  "creditsRequired": 15,
+  "description": "Updated description"
+}
+```
+
+**Create New Feature:**
+```typescript
+POST /api/admin/credits/pricing
+
+Request:
+{
+  "featureKey": "new_feature",
+  "displayName": "New Feature",
+  "creditsRequired": 20,
+  "description": "Description here",
+  "isPremiumOnly": false
+}
+```
+
+### Tier Configuration
+
+**Update Tier:**
+```typescript
+PATCH /api/admin/credits/tiers/:tierKey
+
+Request:
+{
+  "monthlyCredits": 3000,
+  "displayName": "Updated Name"
+}
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="402 Insufficient Credits Error">
+    **Cause:** Not enough credits to use the feature
+
+    **Solution:**
+    - Check your balance: `GET /api/credits/balance`
+    - Purchase more credits if your tier allows it
+    - Wait for next monthly allocation
+    - Refer friends to earn bonus credits
+
+    **Response includes:**
+    ```json
+    {
+      "error": "Insufficient credits",
+      "required": 25,
+      "current": 10
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Credits deducted but feature failed">
+    **Cause:** Feature processing error after deduction
+
+    **Solution:**
+    - System should automatically refund credits
+    - Check transaction history for refund entry
+    - If not refunded within 5 minutes, contact support
+
+    **Verification:**
+    ```bash
+    GET /api/credits/transactions?page=1&limit=10
+    # Look for 'refund' type transaction
+    ```
+  </Accordion>
+
+  <Accordion title="Monthly allocation not received">
+    **Cause:** Allocation date not yet reached or system error
+
+    **Solution:**
+    - Check `nextAllocationDate` in your credit balance
+    - Allocation processes automatically when you check balance after due date
+    - If overdue, try refreshing user data:
+      ```typescript
+      const { refreshUser } = useAuth();
+      await refreshUser();
+      ```
+  </Accordion>
+
+  <Accordion title="Payment completed but credits not added">
+    **Cause:** Callback processing delay or failure
+
+    **Solution:**
+    - Wait 2-3 minutes for callback processing
+    - Check payment session status via support
+    - Provide payment ID and transaction hash
+
+    **Admin can verify:**
+    ```sql
+    SELECT * FROM payment_sessions
+    WHERE id = 'payment-session-uuid';
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+### For Users
+
+1. **Monitor Your Balance**
+   - Keep an eye on credit balance before starting expensive operations
+   - Enable low balance warnings
+
+2. **Use Free Features First**
+   - Test with manual sessions (no caption generation)
+   - Use existing community content
+   - Experiment before committing credits
+
+3. **Plan Monthly Usage**
+   - Remember: credits don't roll over
+   - Use your allocation before it resets
+   - Consider upgrading tier if consistently running out
+
+4. **Refer Friends**
+   - Easiest way to earn extra credits
+   - Both you and your friend benefit
+   - No limit on referrals
+
+### For Developers
+
+1. **Always use `checkAndDeductCredits()`**
+   ```typescript
+   // Good: Atomic operation
+   const result = await creditService.checkAndDeductCredits(
+     userId, 'feature_key', metadata
+   );
+   
+   // Bad: Race condition possible
+   const hasEnough = await creditService.hasEnoughCredits(userId, 'feature_key');
+   if (hasEnough) {
+     await creditService.deductCredits(userId, amount, 'feature_key');
+   }
+   ```
+
+2. **Implement Refunds**
+   ```typescript
+   try {
+     const result = await expensiveOperation();
+   } catch (error) {
+     // Refund on failure
+     await creditService.addCredits(
+       userId, amount, 'refund',
+       'Operation failed - refunded'
+     );
+     throw error;
+   }
+   ```
+
+3. **Log Meaningful Descriptions**
+   ```typescript
+   await creditService.checkAndDeductCredits(
+     userId,
+     'smart_caption',
+     {
+       relatedEntityType: 'media',
+       relatedEntityId: media.id,
+       description: `Smart caption for ${media.fileName}` // Specific!
+     }
+   );
+   ```
+
+4. **Handle All Error Cases**
+   ```typescript
+   if (result.error === 'insufficient_credits') {
+     return res.status(402).json({ error: 'Insufficient credits', ... });
+   }
+   if (result.error === 'premium_only') {
+     return res.status(403).json({ error: 'Premium feature', ... });
+   }
+   if (result.error === 'not_found') {
+     return res.status(404).json({ error: 'Feature not found', ... });
+   }
+   ```
+
+## Related Documentation
+
+- [Authentication](/user/authentication) - User accounts and login
+- [Referral Program](/user/referrals) - Earn credits by referring friends
+- [Profile Management](/user/profile) - View credit stats in your profile

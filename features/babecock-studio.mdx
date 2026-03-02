@@ -1,0 +1,415 @@
+---
+title: 'BabeCock Studio'
+description: 'Create split-screen image combinations with automatic layout detection'
+icon: 'image'
+---
+
+BabeCock Studio combines two images (a "babe" and a "cock") into a single split-screen composition using intelligent layout detection.
+
+## Overview
+
+BabeCock Studio provides:
+- **Automatic Layout Detection**: Server-side image analysis determines optimal side-by-side or top-bottom layout
+- **Dual Source Support**: Upload images or fetch from Reddit
+- **Remix Functionality**: Regenerate with different images while keeping one constant
+- **History Tracking**: Recent creations saved for quick remixing
+
+<Note>
+  The layout algorithm analyzes aspect ratios and dimensions to create visually balanced compositions.
+</Note>
+
+## Creating a BabeCock
+
+<Steps>
+  <Step title="Select Babe Image">
+    Choose your primary image (left panel):
+    
+    <Tabs>
+      <Tab title="Upload">
+        - **Drag and drop** into the babe zone
+        - Click to **browse** files
+        - **Paste from clipboard** (Ctrl/Cmd+V)
+        - Click **Paste from clipboard** button
+        
+        Preview shows:
+        - Image dimensions
+        - File size
+        - Reset button (X) to clear
+      </Tab>
+      
+      <Tab title="Reddit">
+        Fetch from subreddit:
+        1. Enter subreddit name (e.g., `celebs`, `goddess`)
+        2. System validates and normalizes input
+        3. Click source panel to fetch random image
+        
+        <Note>
+          Subreddit preference is saved to localStorage for quick access.
+        </Note>
+      </Tab>
+    </Tabs>
+    
+    <Warning>
+      Uploads are disabled during active generation. Complete current BabeCock before changing images.
+    </Warning>
+  </Step>
+  
+  <Step title="Select Cock Image">
+    Choose your secondary image (cock panel):
+    
+    **Default Subreddits**
+    - `bbcpalace`
+    - `bigblackcocks`
+    - `bwc`
+    - `ChurchOfBWC`
+    
+    **Customization**
+    - Add up to 10 cock subreddits
+    - Remove individual subreddits
+    - Click **Reset** to restore defaults
+    - Banned subreddits (e.g., `bnwo`) are automatically filtered
+    
+    <Tabs>
+      <Tab title="Reddit (Default)">
+        System fetches from your subreddit list:
+        - Random selection from up to 40 recent posts
+        - Media-only filtering
+        - Automatic retry on failure
+      </Tab>
+      
+      <Tab title="Upload">
+        Upload your own cock image:
+        - Same upload methods as babe
+        - Supports all image formats (JPEG, PNG, GIF, WebP)
+        - 50MB file size limit
+      </Tab>
+    </Tabs>
+  </Step>
+  
+  <Step title="Generate Combination">
+    Click the **Generate** button:
+    
+    **What happens:**
+    1. **Upload Phase**: Images upload to server (if not from Reddit)
+    2. **Layout Analysis**: Server analyzes aspect ratios
+       - Determines if side-by-side or top-bottom works best
+       - Considers image dimensions and proportions
+    3. **Combination**: Server returns layout decision and URLs
+    4. **Client Rendering**: Browser combines images using Canvas API
+    5. **History Save**: Result added to Recent Creations
+    
+    <Warning>
+      Generation costs **20 credits**. Make sure you have sufficient balance.
+    </Warning>
+    
+    **Layout Types**
+    - **Side-by-Side**: Used when both images are portrait/square
+    - **Top-Bottom**: Used when images have mismatched aspect ratios
+  </Step>
+  
+  <Step title="Review and Export">
+    Once generated, the combined image appears in the center canvas:
+    
+    **Available Actions**
+    - **Download**: Save as PNG to your device
+    - **Save to Vault**: Store in Media Vault with metadata
+    - **Remix Babe**: Generate with new babe, keep cock
+    - **Remix Cock**: Generate with new cock, keep babe
+    - **Remix All**: Generate with completely new images
+    
+    <Note>
+      Remix costs **10 credits** (half the original generation cost).
+    </Note>
+  </Step>
+</Steps>
+
+## Layout Detection
+
+The server automatically chooses the best layout:
+
+### Side-by-Side Layout
+Used when:
+- Both images are portrait orientation
+- Aspect ratios are similar
+- Combined width won't exceed quality thresholds
+
+**Visual Result**: Two images placed next to each other with equal heights
+
+### Top-Bottom Layout
+Used when:
+- One image is landscape, other is portrait
+- Aspect ratios are very different
+- Side-by-side would create awkward spacing
+
+**Visual Result**: Images stacked vertically with equal widths
+
+<Note>
+  You cannot manually override layout detection. The algorithm optimizes for visual balance.
+</Note>
+
+## Remix Workflows
+
+<Tabs>
+  <Tab title="Remix Babe Only">
+    Keep the cock, change the babe:
+    
+    **Use Case**: Found the perfect cock image, want to try different babes
+    
+    1. Click **Remix Babe** button
+    2. System fetches new babe (from Reddit or prompts upload)
+    3. Keeps existing cock image
+    4. Regenerates combination
+    
+    **Cost**: 10 credits per remix
+  </Tab>
+  
+  <Tab title="Remix Cock Only">
+    Keep the babe, change the cock:
+    
+    **Use Case**: Perfect babe image, exploring different cock images
+    
+    1. Click **Remix Cock** button
+    2. Fetches new cock from your subreddit list
+    3. Keeps existing babe image
+    4. Regenerates combination
+    
+    **Cost**: 10 credits per remix
+  </Tab>
+  
+  <Tab title="Remix All">
+    Generate completely new combination:
+    
+    **Use Case**: Quick exploration of random combinations
+    
+    1. Click **Remix All** button
+    2. Fetches new babe from subreddit
+    3. Fetches new cock from subreddit list
+    4. Regenerates combination
+    
+    **Cost**: 10 credits per remix
+    
+    <Note>
+      This is the fastest way to create multiple variations without manually selecting images.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Recent Creations
+
+The right panel displays your recent BabeCock history:
+
+**Features**
+- Last 8 creations shown as thumbnails
+- Click thumbnail to reload composition
+- Includes original images (not the combination)
+- Metadata stored: layout, sources, subreddits
+- Persists in browser localStorage
+
+**Remix from History**
+- Clicking a history item restores the original babe image
+- Allows remixing with different cock images
+- Settings preserved (subreddits, source preferences)
+
+## Paste from Clipboard
+
+Quick image input via clipboard:
+
+**How to Use**
+1. Copy image in another app (Ctrl/Cmd+C)
+2. Click **Paste from clipboard** button
+3. Or use global paste (Ctrl/Cmd+V) when focused on BabeCock Studio
+
+**Behavior**
+- Automatically detects which panel to paste into
+- Babe panel gets priority if both are set to upload
+- Works with most image sources (screenshots, downloads, web images)
+
+<Warning>
+  Paste is disabled during active uploads or generation to prevent conflicts.
+</Warning>
+
+## Advanced Features
+
+### Image Analysis
+
+The server performs analysis to optimize layout:
+
+```
+Aspect Ratio Calculation:
+- Babe: width / height
+- Cock: width / height
+
+Layout Decision:
+- If both > 1.0 (landscape): Top-bottom
+- If both < 1.0 (portrait): Side-by-side
+- If mixed: Top-bottom (safer for quality)
+```
+
+### Canvas Processing
+
+Client-side rendering using HTML5 Canvas:
+
+1. **Create Canvas**: Dimensions calculated from layout
+2. **Load Images**: Both images loaded asynchronously
+3. **Draw Composition**: Images positioned according to layout
+4. **Export Data URL**: Canvas converted to base64 PNG
+5. **Memory Cleanup**: Canvas cleared on unmount to release GPU memory
+
+<Note>
+  Canvas cleanup is especially important on mobile devices to prevent memory leaks.
+</Note>
+
+### Subreddit Management
+
+Cock subreddit settings are saved:
+
+**localStorage Key**: `babecock_reddit_settings`
+
+**Stored Data**:
+- `babeSubreddit`: Last used babe subreddit
+- `cockSubreddits`: Array of cock subreddits (max 10)
+
+**Banned Subreddit Filtering**:
+- Certain subreddits are blocked from being added
+- If a banned subreddit was previously saved, it's filtered on load
+- Default list automatically excludes banned entries
+
+## Export Options
+
+### Download
+
+**Process**:
+1. Canvas converted to data URL (base64 PNG)
+2. Sent to server for normalization
+3. Server returns optimized image blob
+4. Browser triggers download
+5. Filename: `babecock_{timestamp}.{ext}`
+
+**Supported Formats**:
+- PNG (default, best quality)
+- JPEG (if server optimizes)
+- WebP (if server optimizes)
+
+### Save to Vault
+
+**Process**:
+1. Canvas converted to data URL
+2. Metadata collected:
+   - Layout type
+   - Source URLs
+   - Subreddit info
+   - Aspect ratios
+   - Generation timestamp
+3. Saved to Media Vault with `babecock` category
+4. Appears in vault with BabeCock badge
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Image Selection">
+    **For Best Results**:
+    - Use high-resolution images (1080p+)
+    - Avoid heavily compressed images
+    - Match lighting/quality between babe and cock
+    - Portrait orientation generally works better
+    - Ensure both images are explicit/NSFW (brand consistency)
+  </Accordion>
+  
+  <Accordion title="Subreddit Choices">
+    **Babe Subreddits**:
+    - `celebs`, `goddesses`, `nsfw`, `realgirls`
+    - Niche subreddits for specific aesthetics
+    - Mix popular and smaller subreddits
+    
+    **Cock Subreddits**:
+    - Default list covers most preferences
+    - Add niche subreddits for variety
+    - Remove subreddits producing low-quality images
+  </Accordion>
+  
+  <Accordion title="Workflow Efficiency">
+    **Fast Generation**:
+    1. Keep babe source on Reddit
+    2. Keep cock source on Reddit  
+    3. Use default cock subreddits
+    4. Click Generate (no uploads needed)
+    5. Use Remix All for rapid variations
+    
+    **Quality Control**:
+    1. Upload high-quality babe image
+    2. Generate first version
+    3. Use Remix Cock 3-5 times
+    4. Pick best combination
+    5. Save to vault
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Generation fails">
+    **Common causes**:
+    - Insufficient credits (need 20)
+    - Upload failed (file too large >50MB)
+    - Invalid subreddit name
+    - Reddit fetch returned no images
+    - Network timeout
+    
+    **Solutions**:
+    - Purchase more credits
+    - Compress images before upload
+    - Verify subreddit exists and is public
+    - Try different subreddits
+    - Check internet connection
+  </Accordion>
+  
+  <Accordion title="Layout not ideal">
+    **Cause**: Automatic detection chose suboptimal layout
+    
+    **Solutions**:
+    - Crop images before upload to change aspect ratio
+    - Use images with similar orientations
+    - Try different source images
+    
+    <Note>
+      Layout cannot be manually overridden. The algorithm optimizes for quality.
+    </Note>
+  </Accordion>
+  
+  <Accordion title="Paste from clipboard not working">
+    **Causes**:
+    - Browser clipboard permission denied
+    - No image in clipboard
+    - Generation in progress
+    
+    **Solutions**:
+    - Allow clipboard access when prompted
+    - Copy image before attempting paste
+    - Wait for current generation to complete
+    - Use drag/drop or browse instead
+  </Accordion>
+  
+  <Accordion title="Images don't align well">
+    **Cause**: Very different image dimensions or qualities
+    
+    **Solutions**:
+    - Use images with similar aspect ratios
+    - Ensure both images are high resolution
+    - Try different source images
+    - Use remix to explore alternatives
+  </Accordion>
+</AccordionGroup>
+
+## Integration
+
+BabeCock Studio integrates with:
+
+- **Media Vault**: Save combinations with metadata
+- **Community**: Share BabeCocks (via vault sharing)
+- **Sessions**: Use BabeCocks in custom sessions
+
+## Related Features
+
+- [Media Vault](/features/media-vault) - Organize your BabeCocks
+- [Community](/features/community) - Share and discover BabeCocks
+- [Smart Captions](/features/smart-captions) - Add captions to BabeCocks

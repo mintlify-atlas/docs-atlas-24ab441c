@@ -1,0 +1,612 @@
+---
+title: 'Authentication System'
+description: 'Learn about JOIP authentication methods, user accounts, and session management'
+icon: 'lock'
+---
+
+## Overview
+
+JOIP uses a flexible authentication system that adapts to your environment:
+
+- **Replit OIDC** - When deployed on Replit with `REPLIT_DOMAINS` configured
+- **Local Auth** - For development environments with test accounts
+
+Both methods provide secure, session-based authentication with automatic credential management.
+
+## Authentication Flow
+
+### Login Process
+
+1. **Initiate Login**
+   - Navigate to `/api/login` or click the login button
+   - Optionally include a redirect parameter: `/api/login?redirect=/sessions`
+
+2. **Authentication**
+   - **Replit**: Redirects to Replit OIDC provider
+   - **Local**: Validates credentials against test accounts
+
+3. **Session Creation**
+   - Creates a secure session with 1-week expiration
+   - Session stored in PostgreSQL (`sessions` table)
+   - HTTP-only cookie prevents XSS attacks
+
+4. **User Account Creation**
+   - New users are automatically created in the database
+   - Initial credit balance granted (default: 50 credits)
+   - Referral codes processed if provided
+
+### Session Management
+
+Sessions use PostgreSQL-backed storage with these characteristics:
+
+```typescript
+{
+  secret: process.env.SESSION_SECRET,
+  ttl: 7 * 24 * 60 * 60 * 1000, // 1 week
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 604800000, // 1 week in milliseconds
+    sameSite: 'lax' // CSRF protection
+  }
+}
+```
+
+**Session Features:**
+- Automatic expiration after 1 week of inactivity
+- Secure cookies (HTTPS in production)
+- Cross-tab synchronization via localStorage events
+- Automatic cleanup of expired sessions
+
+## User Accounts
+
+### User Profile Structure
+
+Each user account contains:
+
+```typescript
+{
+  id: string,              // Unique user identifier
+  email: string,           // Email address
+  firstName: string,       // First name (optional)
+  lastName: string,        // Last name (optional)
+  profileImageUrl: string, // Profile picture URL (optional)
+  role: string,            // 'user' | 'admin' | 'super_admin'
+  isActive: boolean,       // Account status
+  ageVerified: boolean,    // Age verification status
+  birthDate: string,       // Birth date (YYYY-MM-DD)
+  referralCode: string,    // Unique 8-character referral code
+  referredBy: string,      // ID of referring user (optional)
+  onboardingCompleted: boolean,
+  interests: object,       // User preferences and interests
+  createdAt: timestamp,
+  updatedAt: timestamp
+}
+```
+
+### Local Development Accounts
+
+For development environments, these test accounts are available:
+
+```typescript
+[
+  { email: 'admin@example.com', password: 'admin123', role: 'admin' },
+  { email: 'dev@example.com', password: 'dev123', role: 'admin' },
+  { email: 'test@example.com', password: 'test123', role: 'admin' }
+]
+```
+
+**Quick Login:**
+- `/api/login` - Auto-login with test@example.com (GET request)
+- `/api/dev-login` - Auto-login with dev@example.com (GET request)
+
+## API Endpoints
+
+### Authentication Endpoints
+
+<AccordionGroup>
+  <Accordion title="POST /api/login" icon="right-to-bracket">
+    Authenticate with email and password (local auth only).
+
+    **Request Body:**
+    ```json
+    {
+      "email": "user@example.com",
+      "password": "yourpassword"
+    }
+    ```
+
+    **Response:**
+    - Success: Redirects to homepage or specified redirect path
+    - Failure: Redirects to `/login` page
+
+    **Query Parameters:**
+    - `redirect` - Path to redirect after successful login (must start with `/`)
+  </Accordion>
+
+  <Accordion title="GET /api/auth/user" icon="user">
+    Get the current authenticated user's profile and credit balance.
+
+    **Response:**
+    ```json
+    {
+      "id": "local-test",
+      "email": "test@example.com",
+      "firstName": "Test",
+      "lastName": "User",
+      "profileImageUrl": null,
+      "role": "admin",
+      "isActive": true,
+      "ageVerified": false,
+      "onboardingCompleted": false,
+      "credits": {
+        "balance": 50,
+        "tier": "free",
+        "isLowBalance": false,
+        "nextAllocationDate": "2026-04-01T00:00:00.000Z"
+      },
+      "createdAt": "2026-03-01T12:00:00.000Z",
+      "updatedAt": "2026-03-01T12:00:00.000Z"
+    }
+    ```
+
+    **Status Codes:**
+    - `200` - Success
+    - `401` - Not authenticated
+    - `404` - User not found in database
+    - `500` - Server error
+  </Accordion>
+
+  <Accordion title="PATCH /api/auth/user" icon="pen-to-square">
+    Update the current user's profile information.
+
+    **Request Body:**
+    ```json
+    {
+      "firstName": "John",
+      "lastName": "Doe",
+      "profileImageUrl": "https://example.com/avatar.jpg"
+    }
+    ```
+
+    **Allowed Fields:**
+    - `firstName` - User's first name
+    - `lastName` - User's last name
+    - `profileImageUrl` - URL to profile picture
+
+    **Response:**
+    Returns updated user object (sanitized)
+
+    **Rate Limiting:**
+    Subject to public API rate limits
+  </Accordion>
+
+  <Accordion title="POST /api/auth/verify-age" icon="calendar-check">
+    Update user's age verification status.
+
+    **Request Body:**
+    ```json
+    {
+      "birthDate": "1990-01-15",
+      "ageVerified": true
+    }
+    ```
+
+    **Validation:**
+    - Birth date must be in `YYYY-MM-DD` format
+    - Date cannot be in the future
+    - Must be a valid calendar date
+
+    **Response:**
+    ```json
+    {
+      "message": "Age verification updated successfully",
+      "user": { /* updated user object */ }
+    }
+    ```
+
+    **Compliance:**
+    Age verification is logged in activity logs with timestamp and IP address for compliance purposes.
+  </Accordion>
+
+  <Accordion title="GET /api/logout" icon="right-from-bracket">
+    Log out the current user and destroy the session.
+
+    **Response:**
+    Redirects to homepage
+
+    **Effects:**
+    - Destroys server-side session
+    - Clears session cookie
+    - Broadcasts logout event to other tabs
+  </Accordion>
+</AccordionGroup>
+
+## Client-Side Auth Context
+
+### React Auth Hook
+
+The client provides a `useAuth()` hook for managing authentication state:
+
+```typescript
+import { useAuth } from '@/lib/AuthContext';
+
+function MyComponent() {
+  const {
+    user,              // Current user object or null
+    isLoading,         // Loading state during initial fetch
+    isAuthenticated,   // Boolean: is user logged in?
+    error,             // Any authentication errors
+    login,             // Redirect to login
+    loginWithRedirect, // Login with custom redirect path
+    logout,            // Log out and redirect to home
+    refreshUser        // Manually refresh user data
+  } = useAuth();
+
+  // Use authentication state
+  if (isLoading) return <div>Loading...</div>;
+  if (!isAuthenticated) return <LoginPrompt />;
+  
+  return <div>Welcome, {user.firstName}!</div>;
+}
+```
+
+### Cross-Tab Synchronization
+
+The auth system automatically synchronizes across browser tabs:
+
+- Login in one tab → All tabs update to authenticated state
+- Logout in one tab → All tabs update to logged out state
+- Uses `localStorage` events for cross-tab communication
+
+**Implementation:**
+```typescript
+// Tab A logs in
+localStorage.setItem('joip_auth_sync', Date.now().toString());
+
+// Tab B receives storage event and refreshes auth state
+window.addEventListener('storage', (event) => {
+  if (event.key === 'joip_auth_sync') {
+    refreshUser(); // Fetch latest user data
+  }
+});
+```
+
+## Security Features
+
+### Session Security
+
+1. **HTTP-Only Cookies**
+   - Cookies cannot be accessed via JavaScript
+   - Prevents XSS attacks from stealing session tokens
+
+2. **SameSite Protection**
+   - `sameSite: 'lax'` prevents CSRF attacks
+   - Cookies only sent on same-site requests
+
+3. **Secure Cookies in Production**
+   - HTTPS-only cookies when `NODE_ENV=production`
+   - Prevents man-in-the-middle attacks
+
+4. **Session Secret**
+   - Required in production (`SESSION_SECRET` env var)
+   - Used to sign session cookies
+   - Prevents session tampering
+
+### Input Validation
+
+All user inputs are validated using Zod schemas:
+
+```typescript
+// Email validation
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Profile update validation
+const userProfileUpdateSchema = z.object({
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
+  profileImageUrl: z.string().url().optional()
+});
+
+// Birth date validation
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+```
+
+### Activity Logging
+
+All authentication-related actions are logged:
+
+- Login attempts (successful and failed)
+- Profile updates with field changes
+- Age verification updates (with timestamp and IP)
+- Session creation and destruction
+
+**Log Structure:**
+```typescript
+{
+  userId: string,
+  action: 'login' | 'profile_updated' | 'age_verification_updated',
+  feature: 'authentication',
+  details: object,  // Action-specific metadata
+  ipAddress: string,
+  userAgent: string,
+  sessionId: string,
+  createdAt: timestamp
+}
+```
+
+## Onboarding Flow
+
+### First-Time Users
+
+New users go through an onboarding process:
+
+1. **Account Creation**
+   - User record created in database
+   - Initial credits allocated (50 credits)
+   - Referral code generated (if applicable)
+
+2. **Onboarding Survey** (Optional)
+   - Content role: Creator or Consumer
+   - Preferred features (max 2)
+   - Preferred tags (max 5)
+
+3. **Age Verification**
+   - Required for certain features
+   - Birth date stored for compliance
+   - Logged in activity logs
+
+### Onboarding Endpoints
+
+<AccordionGroup>
+  <Accordion title="POST /api/auth/onboarding" icon="clipboard-check">
+    Save user onboarding preferences.
+
+    **Request Body:**
+    ```json
+    {
+      "contentRole": "consumer",
+      "preferredFeatures": ["smart-captions", "sessions"],
+      "preferredTags": ["joi", "sissy", "femdom", "edging", "cei"]
+    }
+    ```
+
+    **Validation:**
+    - `contentRole`: Must be "creator" or "consumer"
+    - `preferredFeatures`: Maximum 2 feature slugs
+    - `preferredTags`: Maximum 5 tag slugs
+
+    **Response:**
+    Returns updated user object with `onboardingCompleted: true`
+
+    **Note:**
+    Can only be completed once unless explicitly reset by admin/dev.
+  </Accordion>
+
+  <Accordion title="POST /api/auth/onboarding/reset" icon="rotate-left">
+    Reset user onboarding status (admin or dev environment only).
+
+    **Authorization:**
+    - Admin users (role: admin or super_admin)
+    - Development environment (`NODE_ENV !== 'production'`)
+
+    **Response:**
+    Returns updated user object with `onboardingCompleted: false`
+
+    **Use Case:**
+    Testing onboarding flow during development.
+  </Accordion>
+</AccordionGroup>
+
+## Referral System Integration
+
+The authentication system integrates with the referral program:
+
+### New User Referrals
+
+When a new user signs up with a referral code:
+
+1. **Referral Detection**
+   - Checks for `pending_referral` cookie
+   - Cookie set by visiting link like `?r={encodedCode}`
+   - Also supports `referral_source` and `referral_source_id` for tracking
+
+2. **Referral Processing**
+   - Validates referral code format and existence
+   - Prevents self-referral
+   - Checks rate limiting (max 10 referrals per hour per referrer)
+
+3. **Credit Distribution**
+   - Referrer receives 10 credits (default)
+   - New user receives 25 bonus credits (default)
+   - Credits added atomically in database transaction
+
+4. **Cookie Cleanup**
+   - Clears referral cookies after processing
+   - Prevents duplicate referral claims
+
+**Implementation:**
+```typescript
+// Server-side referral processing
+const pendingReferral = parsePendingReferral(req);
+
+if (isNewUser && pendingReferral?.code) {
+  const result = await referralService.processReferral(
+    userId,
+    pendingReferral.code,
+    pendingReferral.source === 'session_share' ? 'session_share' : 'direct',
+    pendingReferral.sourceId
+  );
+  
+  if (result.success) {
+    logger.info(`Referral processed: +${result.referredCredits} bonus credits`);
+  }
+}
+```
+
+See [Referral Program](/user/referrals) for more details.
+
+## User ID Extraction
+
+The system uses a consistent method for extracting user IDs from requests:
+
+```typescript
+function getUserId(req: any): string {
+  // Local auth user with direct ID
+  if (req.user?.id) {
+    return req.user.id;
+  }
+  
+  // Replit OIDC claims structure
+  if (req.user?.claims?.sub) {
+    return req.user.claims.sub;
+  }
+  
+  // Fallback for sub directly on user object
+  if (req.user?.sub) {
+    return req.user.sub;
+  }
+  
+  throw new Error('Unable to extract user ID from request');
+}
+```
+
+This ensures compatibility with both Replit OIDC and local authentication.
+
+## Environment Configuration
+
+### Required Environment Variables
+
+**Production (Replit OIDC):**
+```bash
+# Required
+SESSION_SECRET=your-random-secret-key
+REPLIT_DOMAINS=your-app.replit.dev
+REPL_ID=your-repl-id
+ISSUER_URL=https://replit.com
+DATABASE_URL=postgresql://...
+```
+
+**Development (Local Auth):**
+```bash
+# SESSION_SECRET optional in dev, defaults to 'local-development-secret-change-me'
+DATABASE_URL=postgresql://...
+# Do NOT set REPLIT_DOMAINS to use local auth
+```
+
+### Security Recommendations
+
+1. **Generate Strong Session Secret**
+   ```bash
+   openssl rand -base64 32
+   ```
+
+2. **Use HTTPS in Production**
+   - Ensures secure cookie transmission
+   - Prevents session hijacking
+
+3. **Rotate Session Secret Periodically**
+   - Invalidates all existing sessions
+   - Good security practice every 90 days
+
+4. **Monitor Failed Login Attempts**
+   - Check activity logs for suspicious patterns
+   - Implement rate limiting if needed
+
+## Troubleshooting
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="401 Unauthorized on /api/auth/user">
+    **Cause:** Session expired or user not logged in
+
+    **Solution:**
+    - Redirect user to `/api/login`
+    - Check if session cookies are being sent
+    - Verify `credentials: 'include'` in fetch requests
+  </Accordion>
+
+  <Accordion title="Session not persisting">
+    **Cause:** Cookie settings or database issues
+
+    **Solution:**
+    - Verify `SESSION_SECRET` is set in production
+    - Check PostgreSQL connection (sessions table)
+    - Ensure cookies are enabled in browser
+    - Check for `sameSite` cookie issues in development
+  </Accordion>
+
+  <Accordion title="Referral credits not awarded">
+    **Cause:** Referral code validation or timing issues
+
+    **Solution:**
+    - Check server logs for referral processing errors
+    - Verify referral code format (8 uppercase alphanumeric)
+    - Ensure user is truly new (not already referred)
+    - Check rate limiting (max 10/hour per referrer)
+  </Accordion>
+
+  <Accordion title="Cross-tab sync not working">
+    **Cause:** localStorage not available or disabled
+
+    **Solution:**
+    - Check if localStorage is enabled in browser
+    - Verify not in private/incognito mode
+    - Manual refresh will still work as fallback
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+### Client-Side
+
+1. **Always use the `useAuth()` hook**
+   ```typescript
+   const { user, isAuthenticated } = useAuth();
+   ```
+
+2. **Handle loading states**
+   ```typescript
+   if (isLoading) return <Spinner />;
+   if (!isAuthenticated) return <LoginPrompt />;
+   ```
+
+3. **Refresh user data after updates**
+   ```typescript
+   await updateProfile(data);
+   await refreshUser(); // Get latest state
+   ```
+
+### Server-Side
+
+1. **Use `isAuthenticated` middleware**
+   ```typescript
+   app.get('/api/protected', isAuthenticated, handler);
+   ```
+
+2. **Extract user ID consistently**
+   ```typescript
+   const userId = getUserId(req);
+   ```
+
+3. **Sanitize user data before sending to client**
+   ```typescript
+   const safeUser = sanitizeUserForClient(user);
+   ```
+
+4. **Log important auth events**
+   ```typescript
+   await storage.logUserActivity({
+     userId,
+     action: 'profile_updated',
+     feature: 'user_profile',
+     details: { fieldsUpdated }
+   });
+   ```
+
+## Related Documentation
+
+- [Credits System](/user/credits-system) - Credit balance and tier information
+- [Referral Program](/user/referrals) - Earn credits by referring friends
+- [Profile Management](/user/profile) - Update profile and preferences

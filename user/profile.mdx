@@ -1,0 +1,726 @@
+---
+title: 'Profile Management'
+description: 'Manage your JOIP user profile, preferences, and account settings'
+icon: 'user-circle'
+---
+
+## Overview
+
+Your JOIP profile contains personal information, account settings, credit balance, and usage statistics. You can update most profile fields at any time through the API or web interface.
+
+## Profile Structure
+
+### User Profile Fields
+
+```typescript
+interface UserProfile {
+  // Identity
+  id: string;                      // Unique user ID
+  email: string;                   // Email address
+  firstName: string | null;        // First name
+  lastName: string | null;         // Last name
+  profileImageUrl: string | null;  // Profile picture URL
+  
+  // Account Status
+  role: 'user' | 'admin' | 'super_admin';
+  isActive: boolean;               // Account enabled/disabled
+  
+  // Age Verification
+  ageVerified: boolean;            // Completed age verification
+  birthDate: string | null;        // YYYY-MM-DD format
+  
+  // Referral System
+  referralCode: string;            // Your unique 8-char code
+  referredBy: string | null;       // Who referred you
+  
+  // Onboarding
+  onboardingCompleted: boolean;
+  interests: UserInterests | null; // Preferences from onboarding
+  
+  // Credits
+  credits: {
+    balance: number;
+    tier: string;
+    isLowBalance: boolean;
+    nextAllocationDate: string | null;
+  };
+  
+  // Timestamps
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+### User Interests
+
+Set during onboarding or updated later:
+
+```typescript
+interface UserInterests {
+  contentRole: 'creator' | 'consumer';
+  preferredFeatures: string[];     // Max 2 feature slugs
+  preferredTags: string[];         // Max 5 tag slugs
+  onboardedAt: string;             // ISO timestamp
+}
+```
+
+## Updating Your Profile
+
+### Editable Fields
+
+You can update these fields via `PATCH /api/auth/user`:
+
+- `firstName` - Your first name
+- `lastName` - Your last name
+- `profileImageUrl` - URL to your profile picture
+
+**Example Request:**
+```typescript
+const response = await fetch('/api/auth/user', {
+  method: 'PATCH',
+  credentials: 'include',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    firstName: 'John',
+    lastName: 'Doe',
+    profileImageUrl: 'https://example.com/avatar.jpg'
+  })
+});
+
+const updatedUser = await response.json();
+```
+
+### Protected Fields
+
+These fields **cannot** be changed via standard profile update:
+
+- `email` - Set by authentication provider
+- `role` - Admin-only modification
+- `isActive` - Admin-only modification
+- `referralCode` - Auto-generated, permanent
+- `referredBy` - Set once during signup
+- `credits` - Managed by credit system
+
+### Input Validation
+
+All profile updates are validated:
+
+```typescript
+const userProfileUpdateSchema = z.object({
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
+  profileImageUrl: z.string().url().optional()
+});
+```
+
+**Rules:**
+- First and last names: 1-100 characters
+- Profile image URL must be valid URL format
+- All fields are optional (only update what you provide)
+
+## Age Verification
+
+### Why It's Required
+
+Age verification is required for:
+- Compliance with adult content regulations
+- Access to certain NSFW features
+- Legal protection for the platform
+
+### Verification Process
+
+**Endpoint:** `POST /api/auth/verify-age`
+
+**Request:**
+```json
+{
+  "birthDate": "1990-01-15",
+  "ageVerified": true
+}
+```
+
+**Validation:**
+- Birth date must be in `YYYY-MM-DD` format
+- Must be a valid calendar date
+- Cannot be in the future
+- Cannot be less than 18 years ago
+
+**Response:**
+```json
+{
+  "message": "Age verification updated successfully",
+  "user": {
+    "ageVerified": true,
+    "birthDate": "1990-01-15"
+  }
+}
+```
+
+### Privacy & Compliance
+
+Age verification is logged for compliance:
+
+```typescript
+await storage.logUserActivity({
+  userId,
+  action: 'age_verification_updated',
+  feature: 'user_profile',
+  details: {
+    birthDate,
+    ageVerified,
+    timestamp: new Date().toISOString()
+  },
+  ipAddress: req.ip,
+  userAgent: req.get('User-Agent'),
+  sessionId: req.sessionID
+});
+```
+
+**Privacy Notes:**
+- Birth date stored encrypted in database
+- Only used for age verification, not shared publicly
+- Logged activity includes timestamp and IP for legal compliance
+
+## Onboarding Preferences
+
+### First-Time Setup
+
+New users complete onboarding to personalize their experience:
+
+**Endpoint:** `POST /api/auth/onboarding`
+
+**Request:**
+```json
+{
+  "contentRole": "consumer",
+  "preferredFeatures": ["smart-captions", "sessions"],
+  "preferredTags": ["joi", "sissy", "femdom", "edging", "cei"]
+}
+```
+
+**Validation:**
+- `contentRole`: Must be "creator" or "consumer"
+- `preferredFeatures`: Maximum 2 feature slugs
+- `preferredTags`: Maximum 5 tag slugs
+
+**Response:**
+```json
+{
+  "onboardingCompleted": true,
+  "interests": {
+    "contentRole": "consumer",
+    "preferredFeatures": ["smart-captions", "sessions"],
+    "preferredTags": ["joi", "sissy", "femdom", "edging", "cei"],
+    "onboardedAt": "2026-03-02T12:00:00.000Z"
+  }
+}
+```
+
+### Resetting Onboarding
+
+Onboarding can only be completed once unless reset by admin or in dev environment.
+
+**Endpoint:** `POST /api/auth/onboarding/reset` (Admin/Dev only)
+
+**Authorization:**
+- Admin users (role: `admin` or `super_admin`)
+- Development environment (`NODE_ENV !== 'production'`)
+
+**Use Case:** Testing onboarding flow during development.
+
+## Credit Balance
+
+Your profile includes current credit information:
+
+### Credit Info Structure
+
+```typescript
+interface UserCreditsSnapshot {
+  balance: number;              // Current credit balance
+  tier: string;                 // 'free' | 'joi_curious' | 'full_access' | 'vip'
+  isLowBalance: boolean;        // Below threshold (20 credits)
+  nextAllocationDate: string | null; // Next monthly allocation
+}
+```
+
+### Viewing Credit Balance
+
+**Client-Side:**
+```typescript
+import { useAuth } from '@/lib/AuthContext';
+
+function ProfileComponent() {
+  const { user } = useAuth();
+  
+  if (user?.credits) {
+    return (
+      <div>
+        <h3>Credit Balance: {user.credits.balance}</h3>
+        <p>Tier: {user.credits.tier}</p>
+        {user.credits.isLowBalance && (
+          <Alert>Running low on credits! Consider upgrading.</Alert>
+        )}
+        {user.credits.nextAllocationDate && (
+          <p>Next allocation: {new Date(user.credits.nextAllocationDate).toLocaleDateString()}</p>
+        )}
+      </div>
+    );
+  }
+}
+```
+
+### Credit History
+
+View detailed transaction history:
+
+```typescript
+const response = await fetch('/api/credits/transactions?page=1&limit=20');
+const { transactions, hasMore, total } = await response.json();
+
+transactions.forEach(tx => {
+  console.log(`${tx.type}: ${tx.amount} credits (${tx.description})`);
+});
+```
+
+See [Credits System](/user/credits-system) for more details.
+
+## Referral Information
+
+Your profile includes referral statistics:
+
+### Referral Code
+
+Every user has a unique 8-character referral code:
+
+```typescript
+const response = await fetch('/api/referrals/link');
+const { code, referralUrl } = await response.json();
+
+console.log('Your code:', code);        // e.g., "K7M2P9X4"
+console.log('Share this:', referralUrl); // e.g., "https://joip.app?r=..."
+```
+
+### Referral Stats
+
+```typescript
+const response = await fetch('/api/referrals/stats');
+const stats = await response.json();
+
+console.log({
+  totalReferrals: stats.totalReferrals,      // Number of successful referrals
+  creditsEarned: stats.creditsEarned,        // Total credits from referrals
+  referralCode: stats.referralCode,          // Your code
+  isProgramActive: stats.isProgramActive     // Program status
+});
+```
+
+### Who Referred You
+
+If you were referred:
+
+```typescript
+if (user.referredBy) {
+  console.log('You were referred by user:', user.referredBy);
+  // Note: Referrer's identity (email, name) is not exposed for privacy
+}
+```
+
+See [Referral Program](/user/referrals) for more details.
+
+## Usage Statistics
+
+Your account tracks comprehensive usage metrics:
+
+### Tracked Metrics
+
+**Sessions:**
+- Sessions created
+- Sessions viewed
+- Sessions edited/deleted
+- Sessions shared/favorited
+
+**Smart Captions:**
+- Total captions generated
+- Custom vs themed captions
+- Caption themes used (JOI, Forced-Bi, Beta, etc.)
+
+**Babecock Studio:**
+- Images created
+- Remixes created
+- Layouts used (side-by-side vs top-bottom)
+
+**HypnoCocks:**
+- Total animations created
+
+**Media Vault:**
+- Media uploaded/deleted
+- Media shared/downloaded
+- Bulk downloads
+
+**General:**
+- Login count
+- Pages viewed
+- API calls total
+- Time spent (minutes)
+
+### Viewing Your Stats
+
+Usage statistics are tracked in the `user_usage_stats` table:
+
+```sql
+SELECT 
+  sessions_created,
+  smart_captions_generated,
+  babecock_images_created,
+  media_uploaded,
+  login_count,
+  last_activity_at
+FROM user_usage_stats
+WHERE user_id = 'your-user-id';
+```
+
+**API Endpoint (if implemented):**
+```typescript
+const response = await fetch('/api/user/stats');
+const stats = await response.json();
+```
+
+### Activity Logs
+
+Detailed activity logs are also maintained:
+
+```typescript
+interface UserActivityLog {
+  id: number;
+  userId: string;
+  action: string;          // e.g., 'session_created', 'caption_generated'
+  feature: string;         // e.g., 'sessions', 'smart_captions'
+  details: object;         // Action-specific metadata
+  ipAddress: string;
+  userAgent: string;
+  sessionId: string;       // Browser session ID
+  createdAt: timestamp;
+}
+```
+
+**Example Queries:**
+```sql
+-- Recent activity
+SELECT action, feature, created_at
+FROM user_activity_logs
+WHERE user_id = 'your-user-id'
+ORDER BY created_at DESC
+LIMIT 50;
+
+-- Activity by feature
+SELECT feature, COUNT(*) as count
+FROM user_activity_logs
+WHERE user_id = 'your-user-id'
+GROUP BY feature
+ORDER BY count DESC;
+```
+
+## Account Roles
+
+### User Roles
+
+| Role | Permissions |
+|------|-------------|
+| `user` | Standard access to all features |
+| `admin` | User management, analytics, settings |
+| `super_admin` | Full system access, admin management |
+
+### Role-Based Access
+
+Certain features require specific roles:
+
+```typescript
+// Admin-only endpoints
+app.get('/api/admin/users', isAdmin, handler);
+app.get('/api/admin/analytics', isAdmin, handler);
+
+// Admin check middleware
+function isAdmin(req, res, next) {
+  const userId = getUserId(req);
+  const user = await storage.getUser(userId);
+  
+  if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  next();
+}
+```
+
+### Requesting Admin Access
+
+Admin access is granted manually:
+
+1. Contact platform administrators
+2. Provide justification for admin access
+3. Admin creates temporary or permanent admin grant
+4. Access logged in admin audit logs
+
+## Profile Privacy
+
+### What's Public
+
+- First name (if you share content publicly)
+- Profile image (if you share content publicly)
+- Public sessions and media you create
+
+### What's Private
+
+- Email address
+- Last name
+- Birth date
+- Credit balance and transactions
+- Referral earnings
+- Usage statistics
+- Activity logs
+- IP addresses
+
+### Data Sanitization
+
+Sensitive data is removed before sending to client:
+
+```typescript
+function sanitizeUserForClient(user: User) {
+  const { password, ...safeUser } = user;
+  return safeUser;
+}
+```
+
+**Never exposed:**
+- Password hashes (local auth only)
+- Session tokens
+- Internal database IDs (in some contexts)
+
+## Account Deletion
+
+### Request Deletion
+
+To delete your account:
+
+1. Contact support with deletion request
+2. Verify your identity
+3. Admin processes deletion
+
+### What Gets Deleted
+
+**Immediately:**
+- User profile record
+- Session cookies
+- Active sessions
+
+**Cascading Deletes:**
+- All sessions you created
+- All media in your vault
+- All activity logs
+- Credit balance and transaction history
+- Referral records (as referred user)
+
+**Preserved (anonymized):**
+- Community content you shared (anonymized)
+- Referral records (as referrer - anonymized)
+- Aggregate analytics (no personal identifiers)
+
+### Cascade Behavior
+
+Database foreign keys with `ON DELETE CASCADE`:
+
+```sql
+-- Sessions deleted when user deleted
+ALTER TABLE content_sessions
+ADD CONSTRAINT fk_user
+FOREIGN KEY (user_id) REFERENCES users(id)
+ON DELETE CASCADE;
+
+-- Media deleted when user deleted
+ALTER TABLE user_media
+ADD CONSTRAINT fk_user
+FOREIGN KEY (user_id) REFERENCES users(id)
+ON DELETE CASCADE;
+```
+
+## API Reference
+
+### Get Current User
+
+<Accordion title="GET /api/auth/user" icon="user">
+  Get your complete profile including credits.
+
+  **Response:**
+  ```json
+  {
+    "id": "user123",
+    "email": "user@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "profileImageUrl": "https://example.com/avatar.jpg",
+    "role": "user",
+    "isActive": true,
+    "ageVerified": true,
+    "birthDate": "1990-01-15",
+    "referralCode": "K7M2P9X4",
+    "referredBy": null,
+    "onboardingCompleted": true,
+    "interests": {
+      "contentRole": "consumer",
+      "preferredFeatures": ["smart-captions"],
+      "preferredTags": ["joi", "edging"],
+      "onboardedAt": "2026-03-01T10:00:00.000Z"
+    },
+    "credits": {
+      "balance": 150,
+      "tier": "free",
+      "isLowBalance": false,
+      "nextAllocationDate": "2026-04-01T00:00:00.000Z"
+    },
+    "createdAt": "2026-03-01T10:00:00.000Z",
+    "updatedAt": "2026-03-02T14:30:00.000Z"
+  }
+  ```
+</Accordion>
+
+### Update Profile
+
+<Accordion title="PATCH /api/auth/user" icon="pen-to-square">
+  Update your profile information.
+
+  **Request Body:**
+  ```json
+  {
+    "firstName": "Jane",
+    "lastName": "Smith",
+    "profileImageUrl": "https://example.com/new-avatar.jpg"
+  }
+  ```
+
+  **Response:** Returns updated user object (sanitized)
+
+  **Rate Limiting:** Subject to public API rate limits
+
+  **Activity Logging:** Update is logged with fields changed
+</Accordion>
+
+### Verify Age
+
+<Accordion title="POST /api/auth/verify-age" icon="calendar-check">
+  Update age verification status.
+
+  **Request Body:**
+  ```json
+  {
+    "birthDate": "1990-01-15",
+    "ageVerified": true
+  }
+  ```
+
+  **Response:**
+  ```json
+  {
+    "message": "Age verification updated successfully",
+    "user": { /* updated user */ }
+  }
+  ```
+</Accordion>
+
+### Complete Onboarding
+
+<Accordion title="POST /api/auth/onboarding" icon="clipboard-check">
+  Save onboarding preferences.
+
+  **Request Body:**
+  ```json
+  {
+    "contentRole": "consumer",
+    "preferredFeatures": ["smart-captions", "sessions"],
+    "preferredTags": ["joi", "sissy", "femdom", "edging", "cei"]
+  }
+  ```
+
+  **Can only be completed once unless reset by admin/dev**
+</Accordion>
+
+## Best Practices
+
+### Profile Security
+
+1. **Use Strong Profile Images**
+   - Host on trusted CDN (Imgur, Cloudinary, etc.)
+   - Use HTTPS URLs only
+   - Avoid exposing personal information in image
+
+2. **Be Mindful of Public Info**
+   - First name is visible on shared content
+   - Profile image appears on community posts
+   - Consider pseudonym for privacy
+
+3. **Complete Age Verification Early**
+   - Required for many features
+   - One-time process
+   - Logged for compliance
+
+### Profile Optimization
+
+1. **Complete Onboarding**
+   - Personalizes your experience
+   - Helps with content recommendations
+   - Quick 2-minute process
+
+2. **Monitor Credit Balance**
+   - Set up low balance alerts
+   - Track usage patterns
+   - Plan tier upgrades if needed
+
+3. **Use Referral Code**
+   - Share to earn free credits
+   - Help grow the community
+   - Track your referral success
+
+### Client-Side Integration
+
+```typescript
+import { useAuth } from '@/lib/AuthContext';
+
+function UserProfile() {
+  const { user, refreshUser } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  
+  const handleUpdate = async (updates) => {
+    const response = await fetch('/api/auth/user', {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    
+    if (response.ok) {
+      await refreshUser(); // Refresh auth context
+      setIsEditing(false);
+    }
+  };
+  
+  return (
+    <div>
+      <h1>{user.firstName} {user.lastName}</h1>
+      <img src={user.profileImageUrl} alt="Profile" />
+      <p>Email: {user.email}</p>
+      <p>Credits: {user.credits.balance}</p>
+      <p>Tier: {user.credits.tier}</p>
+      {isEditing ? (
+        <EditForm onSave={handleUpdate} onCancel={() => setIsEditing(false)} />
+      ) : (
+        <button onClick={() => setIsEditing(true)}>Edit Profile</button>
+      )}
+    </div>
+  );
+}
+```
+
+## Related Documentation
+
+- [Authentication System](/user/authentication) - Login and session management
+- [Credits System](/user/credits-system) - Credit balance and transactions
+- [Referral Program](/user/referrals) - Earn credits by referring friends

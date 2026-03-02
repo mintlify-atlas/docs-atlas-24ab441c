@@ -1,0 +1,666 @@
+---
+title: Database Migrations
+description: Managing database schema changes with Drizzle ORM in the JOIP Web Application
+---
+
+## Overview
+
+The JOIP Web Application uses **Drizzle ORM** for type-safe database operations and schema management. All database schema definitions are centralized in `shared/schema.ts`, which serves as the single source of truth for:
+
+- Database table structures
+- Column definitions and constraints
+- Foreign key relationships
+- Validation schemas (via Zod)
+- TypeScript types
+
+## Schema Architecture
+
+### Schema File Organization
+
+The `shared/schema.ts` file contains all database table definitions:
+
+<CodeGroup>
+```typescript shared/schema.ts
+import { 
+  pgTable, 
+  serial, 
+  text, 
+  varchar, 
+  timestamp, 
+  boolean, 
+  integer,
+  index,
+  foreignKey 
+} from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+// Core Tables
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().notNull(),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  role: varchar("role").notNull().default("user"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const contentSessions = pgTable("content_sessions", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  subreddits: text("subreddits").array().notNull(),
+  intervalMin: integer("interval_min").default(3),
+  intervalMax: integer("interval_max").default(10),
+  transition: text("transition").default("fade"),
+  isPublic: boolean("is_public").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const sessionMedia = pgTable("session_media", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").references(() => contentSessions.id, { onDelete: "cascade" }),
+  mediaUrl: text("media_url").notNull(),
+  caption: text("caption"),
+  order: integer("order").notNull(),
+});
+```
+</CodeGroup>
+
+### Database Connection Configuration
+
+The database connection is configured in `server/db.ts` with connection pooling:
+
+<CodeGroup>
+```typescript server/db.ts
+import pg from 'pg';
+const { Pool } = pg;
+import { drizzle } from 'drizzle-orm/node-postgres';
+import * as schema from "@shared/schema";
+
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL must be set");
+}
+
+// Connection pool configuration
+const poolConfig = {
+  connectionString: process.env.DATABASE_URL,
+  max: parseInt(process.env.DB_POOL_MAX || '20', 10),
+  min: parseInt(process.env.DB_POOL_MIN || '2', 10),
+  idleTimeoutMillis: parseInt(process.env.DB_POOL_IDLE || '10000', 10),
+  connectionTimeoutMillis: 10000,
+  ssl: { rejectUnauthorized: false },
+  statement_timeout: 30000,
+  query_timeout: 20000,
+};
+
+export const pool = new Pool(poolConfig);
+
+export const db = drizzle({ 
+  client: pool, 
+  schema,
+  logger: process.env.NODE_ENV === 'development'
+});
+```
+</CodeGroup>
+
+## Running Migrations
+
+### Push Schema Changes
+
+The primary migration command is `npm run db:push`, which applies schema changes from `shared/schema.ts` to your database:
+
+<Steps>
+  <Step title="Modify Schema">
+    Edit `shared/schema.ts` to add, modify, or remove table definitions:
+
+    ```typescript shared/schema.ts
+    export const contentSessions = pgTable("content_sessions", {
+      id: serial("id").primaryKey(),
+      title: text("title").notNull(),
+      // Add new column
+      description: text("description"),
+      // ... existing columns
+    });
+    ```
+  </Step>
+
+  <Step title="Run Migration">
+    Apply the schema changes to your database:
+
+    ```bash
+    npm run db:push
+    ```
+
+    Output:
+    ```
+    Applying schema changes...
+    ✓ Added column: content_sessions.description
+    Schema synchronized successfully!
+    ```
+  </Step>
+
+  <Step title="Verify Changes">
+    Check your database to confirm the changes:
+
+    ```bash
+    # Using psql
+    psql $DATABASE_URL -c "\d content_sessions"
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  **Destructive Changes**: The `db:push` command can be destructive. It will drop columns or tables that are removed from the schema. Always backup your database before running migrations in production.
+</Warning>
+
+### Alternative: Generate Migration Files
+
+For more control over migrations, you can generate SQL migration files:
+
+```bash
+# Generate migration files based on schema changes
+npx drizzle-kit generate
+```
+
+This creates migration files in the `migrations/` directory that you can review before applying.
+
+## Common Schema Patterns
+
+### Adding a New Table
+
+When adding a new table to the schema:
+
+<Steps>
+  <Step title="Define Table Schema">
+    ```typescript shared/schema.ts
+    export const userPreferences = pgTable("user_preferences", {
+      id: serial("id").primaryKey(),
+      userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+      theme: varchar("theme").default("dark"),
+      emailNotifications: boolean("email_notifications").default(true),
+      createdAt: timestamp("created_at").defaultNow(),
+      updatedAt: timestamp("updated_at").defaultNow(),
+    });
+    ```
+  </Step>
+
+  <Step title="Create Validation Schema">
+    ```typescript shared/schema.ts
+    export const insertUserPreferencesSchema = createInsertSchema(userPreferences, {
+      theme: z.enum(["light", "dark", "auto"]).optional(),
+    });
+    ```
+  </Step>
+
+  <Step title="Export TypeScript Types">
+    ```typescript shared/schema.ts
+    export type UserPreferences = typeof userPreferences.$inferSelect;
+    export type InsertUserPreferences = typeof userPreferences.$inferInsert;
+    ```
+  </Step>
+
+  <Step title="Apply Migration">
+    ```bash
+    npm run db:push
+    ```
+  </Step>
+</Steps>
+
+### Adding Foreign Keys
+
+Foreign key relationships ensure referential integrity:
+
+<CodeGroup>
+```typescript shared/schema.ts
+export const sessionMedia = pgTable("session_media", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id")
+    .notNull()
+    .references(() => contentSessions.id, { 
+      onDelete: "cascade" // Delete media when session is deleted
+    }),
+  mediaUrl: text("media_url").notNull(),
+  order: integer("order").notNull(),
+});
+```
+</CodeGroup>
+
+<Note>
+  The `onDelete: "cascade"` option ensures that when a session is deleted, all associated media items are automatically deleted.
+</Note>
+
+### Adding Indexes
+
+Indexes improve query performance for frequently accessed columns:
+
+<CodeGroup>
+```typescript shared/schema.ts
+import { index } from "drizzle-orm/pg-core";
+
+export const userActivityLogs = pgTable(
+  "user_activity_logs",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id").references(() => users.id),
+    action: text("action").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_user_activity_user_id").on(table.userId),
+    index("idx_user_activity_created_at").on(table.createdAt),
+  ]
+);
+```
+</CodeGroup>
+
+### Array Columns
+
+PostgreSQL array columns for storing lists:
+
+<CodeGroup>
+```typescript shared/schema.ts
+export const contentSessions = pgTable("content_sessions", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  // Array of subreddit names
+  subreddits: text("subreddits").array().notNull(),
+  // ... other columns
+});
+
+// Validation schema
+export const insertSessionSchema = createInsertSchema(contentSessions, {
+  subreddits: z.array(z.string()).min(1).max(10),
+});
+```
+</CodeGroup>
+
+### JSON Columns
+
+For storing complex structured data:
+
+<CodeGroup>
+```typescript shared/schema.ts
+import { jsonb } from "drizzle-orm/pg-core";
+
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey(),
+  email: varchar("email").unique(),
+  // Store user interests as JSONB
+  interests: jsonb("interests"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// TypeScript interface for the JSON structure
+export interface UserInterests {
+  contentRole: 'creator' | 'consumer';
+  preferredFeatures: string[];
+  preferredTags: string[];
+  onboardedAt: string;
+}
+```
+</CodeGroup>
+
+## Validation with Zod
+
+### Creating Insert Schemas
+
+Drizzle integrates with Zod for runtime validation:
+
+<CodeGroup>
+```typescript shared/schema.ts
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+export const insertSessionSchema = createInsertSchema(contentSessions, {
+  // Override default validation
+  title: z.string().min(1, "Title is required").max(200, "Title too long"),
+  subreddits: z.array(z.string()).min(1, "At least one subreddit required").max(10),
+  intervalMin: z.number().min(1).max(30),
+  intervalMax: z.number().min(1).max(60),
+  transition: z.enum(["fade", "slide", "zoom", "flip", "none"]),
+}).omit({
+  id: true, // Exclude auto-generated fields
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSessionMediaSchema = createInsertSchema(sessionMedia, {
+  caption: z.string().max(500, "Caption too long").optional(),
+  order: z.number().int().min(0),
+});
+```
+</CodeGroup>
+
+### Using Validation in API Routes
+
+<CodeGroup>
+```typescript server/routes.ts
+import { insertSessionSchema } from "@shared/schema";
+import { z } from "zod";
+
+router.post('/sessions', isAuthenticated, async (req, res) => {
+  try {
+    // Validate request body
+    const validated = insertSessionSchema.parse(req.body);
+    
+    // Create session with validated data
+    const session = await storage.createSession({
+      ...validated,
+      userId: req.user!.id,
+    });
+    
+    res.json(session);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: 'Validation failed', 
+        details: error.errors 
+      });
+    }
+    throw error;
+  }
+});
+```
+</CodeGroup>
+
+## Database Constraints
+
+The JOIP database schema includes comprehensive constraints for data integrity:
+
+### Primary Keys and Unique Constraints
+
+```sql
+-- Primary keys (auto-generated)
+ALTER TABLE content_sessions ADD PRIMARY KEY (id);
+ALTER TABLE session_media ADD PRIMARY KEY (id);
+
+-- Unique constraints
+ALTER TABLE users ADD CONSTRAINT users_email_unique UNIQUE (email);
+ALTER TABLE shared_sessions ADD CONSTRAINT shared_sessions_share_code_unique UNIQUE (share_code);
+```
+
+### Foreign Key Constraints
+
+The database includes **13 foreign key relationships** ensuring referential integrity:
+
+<CodeGroup>
+```sql server/database-constraints.sql
+-- Session relationships
+ALTER TABLE content_sessions 
+  ADD CONSTRAINT content_sessions_user_id_fkey 
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+ALTER TABLE session_media 
+  ADD CONSTRAINT session_media_session_id_fkey 
+  FOREIGN KEY (session_id) REFERENCES content_sessions(id) ON DELETE CASCADE;
+
+ALTER TABLE shared_sessions 
+  ADD CONSTRAINT shared_sessions_session_id_fkey 
+  FOREIGN KEY (session_id) REFERENCES content_sessions(id) ON DELETE CASCADE;
+
+-- User media relationships
+ALTER TABLE user_media 
+  ADD CONSTRAINT user_media_user_id_fkey 
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+-- Community relationships
+ALTER TABLE community_sessions 
+  ADD CONSTRAINT community_sessions_creator_id_fkey 
+  FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE SET NULL;
+
+ALTER TABLE community_session_media 
+  ADD CONSTRAINT community_session_media_community_session_id_fkey 
+  FOREIGN KEY (community_session_id) REFERENCES community_sessions(id) ON DELETE CASCADE;
+```
+</CodeGroup>
+
+### Performance Indexes
+
+Optimized indexes for common query patterns:
+
+<CodeGroup>
+```sql server/database-optimization.sql
+-- User activity queries
+CREATE INDEX idx_user_activity_logs_user_id ON user_activity_logs(user_id);
+CREATE INDEX idx_user_activity_logs_created_at ON user_activity_logs(created_at DESC);
+
+-- Session queries
+CREATE INDEX idx_content_sessions_user_id ON content_sessions(user_id);
+CREATE INDEX idx_content_sessions_created_at ON content_sessions(created_at DESC);
+CREATE INDEX idx_content_sessions_is_public ON content_sessions(is_public) WHERE is_public = true;
+
+-- Media queries
+CREATE INDEX idx_session_media_session_id ON session_media(session_id);
+CREATE INDEX idx_session_media_order ON session_media(session_id, "order");
+
+-- Community queries
+CREATE INDEX idx_community_sessions_created_at ON community_sessions(created_at DESC);
+CREATE INDEX idx_community_media_created_at ON community_media(created_at DESC);
+```
+</CodeGroup>
+
+## Common Migration Tasks
+
+### Adding a Column with Default Value
+
+<CodeGroup>
+```typescript shared/schema.ts
+export const contentSessions = pgTable("content_sessions", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  // Add new column with default
+  viewCount: integer("view_count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+```
+</CodeGroup>
+
+```bash
+npm run db:push
+```
+
+### Renaming a Column
+
+<Warning>
+  **Manual Migration Required**: Drizzle's `db:push` cannot safely rename columns. You must use SQL migrations for renames.
+</Warning>
+
+```sql
+ALTER TABLE content_sessions 
+  RENAME COLUMN old_column_name TO new_column_name;
+```
+
+### Changing Column Type
+
+```typescript
+// Before
+intervalMin: integer("interval_min").default(3)
+
+// After - change to numeric with decimals
+intervalMin: decimal("interval_min", { precision: 5, scale: 2 }).default("3.00")
+```
+
+```bash
+npm run db:push
+```
+
+### Dropping a Column
+
+<Steps>
+  <Step title="Remove from Schema">
+    ```typescript shared/schema.ts
+    export const contentSessions = pgTable("content_sessions", {
+      id: serial("id").primaryKey(),
+      title: text("title").notNull(),
+      // Removed: deprecated_column
+      createdAt: timestamp("created_at").defaultNow(),
+    });
+    ```
+  </Step>
+
+  <Step title="Apply Migration">
+    ```bash
+    npm run db:push
+    ```
+
+    The column will be dropped from the database.
+  </Step>
+</Steps>
+
+<Warning>
+  **Data Loss**: Dropping columns is irreversible. Ensure you have backups before removing columns in production.
+</Warning>
+
+## Environment-Specific Migrations
+
+### Development
+
+```bash
+# Local PostgreSQL
+export DATABASE_URL="postgresql://localhost:5432/joip_dev"
+npm run db:push
+```
+
+### Staging
+
+```bash
+# Neon staging database
+export DATABASE_URL="postgresql://user:pass@staging-db.neon.tech/joip_staging"
+npm run db:push
+```
+
+### Production
+
+<Warning>
+  **Production Safety**: Always test migrations in staging before applying to production. Use transaction-based migrations for critical changes.
+</Warning>
+
+```bash
+# Neon production database
+export DATABASE_URL="postgresql://user:pass@prod-db.neon.tech/joip_production"
+
+# Generate migration SQL for review
+npx drizzle-kit generate
+
+# Review generated SQL in migrations/
+cat migrations/0001_add_column.sql
+
+# Apply manually or use db:push after review
+npm run db:push
+```
+
+## Drizzle Kit Commands
+
+### Introspect Existing Database
+
+Generate schema from an existing database:
+
+```bash
+npx drizzle-kit introspect
+```
+
+### Generate Migration Files
+
+Create SQL migration files based on schema changes:
+
+```bash
+npx drizzle-kit generate
+```
+
+Output:
+```
+migrations/
+├── 0001_add_user_preferences.sql
+├── 0002_add_session_indexes.sql
+└── meta/
+    └── _journal.json
+```
+
+### Drop All Tables
+
+<Warning>
+  **Destructive Command**: This will delete all data. Only use in development.
+</Warning>
+
+```bash
+npx drizzle-kit drop
+```
+
+## Best Practices
+
+### Schema Design
+
+1. **Use VARCHAR for User IDs**: Supports both Replit OIDC (string IDs) and local auth (UUID)
+2. **Add Timestamps**: Include `createdAt` and `updatedAt` on all tables
+3. **Default Values**: Provide sensible defaults for optional fields
+4. **Array Columns**: Use PostgreSQL arrays for lists instead of join tables
+5. **JSONB for Complex Data**: Store structured data that doesn't need querying
+
+### Migration Strategy
+
+1. **Test Locally First**: Always run migrations in development before staging
+2. **Backup Before Migration**: Create database backups before production migrations
+3. **Incremental Changes**: Make small, incremental schema changes
+4. **Review Generated SQL**: Check migration SQL for unexpected changes
+5. **Document Breaking Changes**: Note any breaking changes in commit messages
+
+### Validation
+
+1. **Validate Early**: Use Zod schemas at API boundaries
+2. **Client-Side Validation**: Mirror validation rules in React Hook Form
+3. **Custom Validators**: Add custom Zod refinements for complex validation
+4. **Error Messages**: Provide clear, user-friendly validation messages
+
+## Troubleshooting
+
+### Migration Fails with Constraint Violation
+
+**Issue**: Adding a NOT NULL column to a table with existing data
+
+**Solution**: Add column with NULL first, populate data, then set NOT NULL:
+
+```sql
+-- Step 1: Add nullable column
+ALTER TABLE users ADD COLUMN age_verified BOOLEAN;
+
+-- Step 2: Populate with default value
+UPDATE users SET age_verified = false WHERE age_verified IS NULL;
+
+-- Step 3: Set NOT NULL constraint
+ALTER TABLE users ALTER COLUMN age_verified SET NOT NULL;
+```
+
+### Schema Out of Sync
+
+**Issue**: Local schema doesn't match database
+
+**Solution**:
+```bash
+# Introspect current database state
+npx drizzle-kit introspect
+
+# Compare with shared/schema.ts
+# Either update schema.ts or run db:push
+```
+
+### Connection Pool Exhausted
+
+**Issue**: Too many concurrent connections
+
+**Solution**: Adjust pool configuration in `.env`:
+
+```bash
+DB_POOL_MAX=20
+DB_POOL_MIN=2
+DB_POOL_IDLE=10000
+```
+
+## Next Steps
+
+- [Learn about Testing](/guides/development/testing)
+- [Explore API Documentation](/api/introduction)
+- [Review Project Structure](/guides/development/project-structure)

@@ -1,0 +1,158 @@
+---
+title: "List Sessions"
+api: "GET /api/sessions"
+description: "Retrieve all sessions for the authenticated user"
+---
+
+## Authentication
+
+This endpoint requires authentication. Include session credentials in your request.
+
+## Query Parameters
+
+<ParamField query="categoryId" type="integer" optional>
+  Filter sessions by category ID
+</ParamField>
+
+<ParamField query="categorySlug" type="string" optional>
+  Filter sessions by category slug (max 120 characters)
+</ParamField>
+
+<ParamField query="tags" type="string" optional>
+  Comma-separated list of tag slugs to filter by (e.g., "joi,femdom")
+</ParamField>
+
+<ParamField query="tagMode" type="string" optional>
+  Tag matching mode: "and" or "or" (default: "or")
+</ParamField>
+
+<ParamField query="sort" type="string" optional>
+  Sort order: "recent" or "relevance" (when using tag filtering)
+</ParamField>
+
+## Response
+
+Returns an array of session objects owned by the authenticated user.
+
+<ResponseField name="id" type="integer">
+  Unique session identifier
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Session title
+</ResponseField>
+
+<ResponseField name="userId" type="string">
+  Owner's user ID
+</ResponseField>
+
+<ResponseField name="subreddits" type="array">
+  Array of subreddit names associated with this session
+</ResponseField>
+
+<ResponseField name="categoryId" type="integer">
+  Category ID for this session
+</ResponseField>
+
+<ResponseField name="intervalMin" type="integer">
+  Minimum slide interval in seconds (1-60)
+</ResponseField>
+
+<ResponseField name="intervalMax" type="integer">
+  Maximum slide interval in seconds (1-60)
+</ResponseField>
+
+<ResponseField name="transition" type="string">
+  Transition effect: "fade", "slide", "zoom", "flip", or "none"
+</ResponseField>
+
+<ResponseField name="thumbnail" type="string" optional>
+  URL to session thumbnail image
+</ResponseField>
+
+<ResponseField name="aiPrompt" type="string" optional>
+  Custom AI prompt for caption generation
+</ResponseField>
+
+<ResponseField name="captionTheme" type="string" optional>
+  Caption theme: "joi", "forced-bi", "beta", "cbt", "cuckold", or "custom"
+</ResponseField>
+
+<ResponseField name="isPublic" type="boolean">
+  Whether the session is publicly accessible
+</ResponseField>
+
+<ResponseField name="isFavorite" type="boolean">
+  Whether the session is marked as favorite
+</ResponseField>
+
+<ResponseField name="isManualMode" type="boolean">
+  Whether auto-advance is disabled in the player
+</ResponseField>
+
+<ResponseField name="isImported" type="boolean">
+  Whether the session was imported from an external source
+</ResponseField>
+
+<ResponseField name="importSource" type="string" optional>
+  Source of import (e.g., "imgchest")
+</ResponseField>
+
+<ResponseField name="createdAt" type="timestamp">
+  Session creation timestamp
+</ResponseField>
+
+<ResponseField name="updatedAt" type="timestamp">
+  Last update timestamp
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://app.joip.io/api/sessions" \
+  -H "Cookie: connect.sid=YOUR_SESSION_COOKIE"
+```
+
+```bash With Filters
+curl -X GET "https://app.joip.io/api/sessions?categorySlug=joi&tags=femdom,cei&tagMode=and" \
+  -H "Cookie: connect.sid=YOUR_SESSION_COOKIE"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 - Success
+[
+  {
+    "id": 123,
+    "title": "My First Session",
+    "userId": "user_abc123",
+    "subreddits": ["joi", "femdom"],
+    "categoryId": 1,
+    "intervalMin": 3,
+    "intervalMax": 10,
+    "transition": "fade",
+    "thumbnail": "https://i.redd.it/example.jpg",
+    "aiPrompt": null,
+    "captionTheme": "joi",
+    "isPublic": false,
+    "isFavorite": true,
+    "isManualMode": false,
+    "isImported": false,
+    "importSource": null,
+    "createdAt": "2025-03-02T10:30:00Z",
+    "updatedAt": "2025-03-02T10:30:00Z"
+  }
+]
+```
+
+```json 400 - Invalid Query Parameters
+{
+  "message": "Validation error: categoryId must be a positive integer"
+}
+```
+
+```json 401 - Unauthorized
+{
+  "message": "Authentication required"
+}
+```
+</ResponseExample>

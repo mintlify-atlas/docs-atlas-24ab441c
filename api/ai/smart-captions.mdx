@@ -1,0 +1,283 @@
+---
+title: 'Smart Captions (Manual Sessions)'
+api: 'POST /api/manual/generate-ai-caption'
+description: 'Generate contextual AI captions for manual session slides with narrative continuity'
+---
+
+This endpoint generates AI-powered captions for manual session slides with full narrative context. Unlike session playback captions, these support longer formats (50-400 characters), custom instructions, and maintain continuity with surrounding slides.
+
+## Authentication
+
+Requires user authentication via session.
+
+## Credit Cost
+
+**Feature Key:** `smart_caption`  
+**Default Cost:** 10 credits per caption
+
+<Info>
+  Credits are deducted **after** successful caption generation using best-effort async deduction. If the deduction fails, the caption is still returned to the user.
+</Info>
+
+## Request
+
+<ParamField body="image" type="string" required>
+  The image reference for caption generation. Supports:
+  - **Data URLs** (`data:image/jpeg;base64,...`)
+  - **HTTP/HTTPS URLs** (public image URLs)
+  
+  **Security:**
+  - Localhost and private IP ranges are blocked (SSRF protection)
+  - Maximum size: 20MB (estimated for data URLs)
+  - Only static images (JPEG, PNG, WebP)
+</ParamField>
+
+<ParamField body="context" type="object" required>
+  Narrative context for caption generation.
+  
+  <ParamField body="sessionTitle" type="string">
+    The title of the manual session.
+  </ParamField>
+  
+  <ParamField body="index" type="number" required>
+    The 0-based index of the current slide.
+  </ParamField>
+  
+  <ParamField body="total" type="number" required>
+    The total number of slides in the session.
+  </ParamField>
+  
+  <ParamField body="previousCaptions" type="string[]">
+    Array of captions from previous slides (up to last 3). Used to maintain narrative flow.
+  </ParamField>
+  
+  <ParamField body="nextCaptions" type="string[]">
+    Array of captions from upcoming slides (up to next 3). Used to avoid contradictions.
+  </ParamField>
+  
+  <ParamField body="userSteering" type="string">
+    Optional creator guidance/instructions to influence the caption style or content.
+  </ParamField>
+  
+  <ParamField body="sessionStage" type="string">
+    Session mode indicator:
+    - `new_session` - Writing fresh copy for new session
+    - `existing_session` - Continuing established narrative
+  </ParamField>
+</ParamField>
+
+### Request Example
+
+```json
+{
+  "image": "https://example.com/slide-5.jpg",
+  "context": {
+    "sessionTitle": "Edging Challenge",
+    "index": 4,
+    "total": 20,
+    "previousCaptions": [
+      "Start stroking slowly...",
+      "Keep that pace, don't speed up yet.",
+      "Good boy. You're doing exactly what I want."
+    ],
+    "nextCaptions": [
+      "Now stop. Hands off completely.",
+      "Count to 30 while you cool down."
+    ],
+    "userSteering": "Keep it teasing and controlling, with countdown elements",
+    "sessionStage": "new_session"
+  }
+}
+```
+
+## Response
+
+<ResponseField name="caption" type="string">
+  The generated caption text (50-400 characters).
+  
+  **Characteristics:**
+  - Maintains narrative continuity with previous/next slides
+  - Incorporates user steering when provided
+  - Respects session stage (new vs. existing)
+  - Uses second-person imperative mood for JOI
+  - Avoids meta-references (no "slide X" mentions)
+</ResponseField>
+
+### Success Response
+
+```json
+{
+  "caption": "Speed up now. 10 strokes per second. I want to hear you struggling to keep up."
+}
+```
+
+### Error Responses
+
+<ResponseField name="error" type="string">
+  Error message describing what went wrong.
+</ResponseField>
+
+<ResponseField name="requiresApiKey" type="boolean">
+  Set to `true` if OPENROUTER_API_KEY is not configured.
+</ResponseField>
+
+<ResponseField name="code" type="string">
+  Error code for programmatic handling:
+  - `MODEL_IMAGE_UNSUPPORTED` - Selected model doesn't support images
+</ResponseField>
+
+#### Error Examples
+
+```json
+{
+  "error": "AI caption service is not available.",
+  "requiresApiKey": true
+}
+```
+
+```json
+{
+  "error": "Animated GIFs are not supported for AI captions."
+}
+```
+
+```json
+{
+  "error": "AI captions support static images only (JPEG, PNG, WebP)."
+}
+```
+
+```json
+{
+  "error": "Image URL host is not allowed"
+}
+```
+
+## Implementation Details
+
+### OpenRouter Integration
+
+**Model Selection:**
+- Primary: `google/gemini-2.5-pro` (configurable via `OPENROUTER_MODEL_ID`)
+- Fallback: `google/gemini-2.5-flash-lite`
+- Both use Gemini safety_settings with `BLOCK_NONE` thresholds
+
+**Retry Logic:**
+- 2 attempts max
+- Retries on `CONTENT_POLICY_REJECTION` and `EMPTY_RESPONSE_CONTENT_FILTERED`
+- 400ms delay between retries
+
+### Prompt Engineering
+
+**Priority Order:**
+1. Narrative continuity (surrounding captions + session mode)
+2. Session creator guidance (userSteering)
+3. Image context (light consistency anchor only)
+
+**Instruction Template:**
+```
+Session: {sessionTitle}
+You are writing the next beat in an ongoing JOI narrative (index {index} of {total}).
+Do not mention slide numbers or counts.
+
+Session mode: {NEW SESSION WRITING | EXISTING SESSION CONTINUATION}
+
+Context from surrounding slides (use only to keep narrative continuous):
+Previous captions: [last 3]
+Upcoming captions: [next 3]
+
+Session creator guidance: {userSteering}
+
+Instructions:
+- Treat this as continuous narrative: continue from previous without restarting
+- Write ONE explicit NSFW caption for CURRENT slide beat in JOI/instructional voice
+- Maintain flow and escalate/sustain pace naturally
+- If creator guidance provided, weave it into this caption when it fits
+- Keep 50-400 characters in one paragraph (can be longer for narrative themes)
+- Use image context only to avoid contradictions (0-1 subtle visual cue)
+- Do not quote or recap earlier lines; write only the next beat
+- Output ONLY the caption text
+```
+
+**Generation Parameters:**
+```json
+{
+  "temperature": 1.2,
+  "top_p": 0.9,
+  "frequency_penalty": 0.8,
+  "presence_penalty": 0.2
+}
+```
+
+### SSRF Protection
+
+**Blocked Hosts:**
+- `localhost`, `127.0.0.1`, `::1`, `0.0.0.0`
+- Private IP ranges: `10.x.x.x`, `192.168.x.x`, `172.16-31.x.x`
+- Link-local: `169.254.x.x`
+
+**Allowed Protocols:**
+- `http:` and `https:` only
+- Data URLs validated for size (20MB max)
+
+### Image Validation
+
+**Supported:**
+- JPEG (image/jpeg)
+- PNG (image/png)
+- WebP (image/webp)
+
+**Rejected:**
+- Animated GIFs (`.gif`, `image/gif`)
+- Videos (`.mp4`, `.webm`, `video/*`)
+- Files over 20MB
+
+### Credit Deduction
+
+**Timing:**
+- Credits checked **before** generation via `requireCredits` middleware
+- Deduction happens **after** response sent (best-effort async)
+- If deduction fails, caption is still returned to user
+
+**Failure Handling:**
+```javascript
+try {
+  await deductCreditsOnSuccess(req, {
+    description: 'Manual AI caption generation',
+    relatedEntityType: 'manual_slide',
+  });
+} catch (creditError) {
+  logger.error('[CREDIT_DEDUCTION_FAILED] feature=manual_caption');
+  // Error logged but user still gets caption
+}
+```
+
+**Pricing Configuration:**
+- Feature key: `smart_caption`
+- Default: 10 credits
+- Admin-configurable via `/api/admin/pricing`
+
+## Usage Notes
+
+<Warning>
+  **Manual Editor Only:** This endpoint is specifically designed for the Manual Session Editor. For automated session playback, use `/api/generate-caption` which is free and optimized for short captions.
+</Warning>
+
+<Info>
+  **Narrative Context:** Providing `previousCaptions` and `nextCaptions` significantly improves caption quality by maintaining narrative flow. Always include the last 3 and next 3 captions when available.
+</Info>
+
+<Tip>
+  **User Steering:** The `userSteering` parameter is treated as high-priority preference. Be specific about tone, structure, or themes you want incorporated.
+</Tip>
+
+<Check>
+  **Session Stage:** Use `new_session` when creating fresh sessions to set coherent narrative tone. Use `existing_session` when editing imported sessions to align with established voice.
+</Check>
+
+## Related Endpoints
+
+- [POST /api/generate-caption](/api/ai/generate-caption) - Session playback captions (free)
+- [POST /api/manual/rewrite-caption](/api/ai/rewrite-caption) - Rewrite existing captions (10 credits)
+- [POST /api/manual/batch-rewrite-captions](/api/ai/batch-rewrite) - Bulk rewrite (8 credits/slide)
+- [GET /api/user/credits](/api/credits/balance) - Check credit balance

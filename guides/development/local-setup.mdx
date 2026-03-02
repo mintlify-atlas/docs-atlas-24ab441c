@@ -1,0 +1,388 @@
+---
+title: Local Development Setup
+description: Complete guide to setting up your local development environment for the JOIP Web Application
+---
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js** 18.x or higher
+- **npm** 9.x or higher
+- **PostgreSQL** 14+ (or access to a cloud PostgreSQL instance)
+- **Git** for version control
+
+## Initial Setup
+
+<Steps>
+  <Step title="Clone the Repository">
+    Clone the JOIP repository to your local machine:
+
+    ```bash
+    git clone <repository-url>
+    cd Joip-Web-App-2
+    ```
+  </Step>
+
+  <Step title="Install Dependencies">
+    Install all project dependencies using npm:
+
+    ```bash
+    npm install
+    ```
+
+    This will install dependencies for the entire monorepo, including:
+    - React 18 and Vite for the frontend
+    - Express.js for the backend
+    - Drizzle ORM for database operations
+    - TypeScript and all type definitions
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    Copy the example environment file and configure your local settings:
+
+    ```bash
+    cp .env.local.example .env
+    ```
+
+    <Note>
+      For local development, use `.env.local.example` as your template. The `.env.example` file is for Replit deployments.
+    </Note>
+
+    ### Required Environment Variables
+
+    Edit your `.env` file with the following required variables:
+
+    ```bash
+    # Database Configuration
+    DATABASE_URL=postgresql://user:password@localhost:5432/joip_dev
+
+    # Session Management
+    SESSION_SECRET=your-secure-random-string-here
+
+    # Reddit API (for content fetching)
+    REDDIT_CLIENT_ID=your-reddit-client-id
+    REDDIT_CLIENT_SECRET=your-reddit-client-secret
+
+    # AI Caption Generation (choose one or both)
+    OPENROUTER_API_KEY=your-openrouter-key
+    OPENAI_API_KEY=your-openai-key
+
+    # Cloud Storage (Supabase)
+    SUPABASE_URL=https://your-project.supabase.co
+    SUPABASE_ANON_KEY=your-supabase-anon-key
+    SUPABASE_SERVICE_KEY=your-supabase-service-key
+    ```
+
+    ### Optional Environment Variables
+
+    ```bash
+    # AI Undress Feature
+    XAI_API_KEY=your-xai-api-key
+    FREEPIK_API_KEY=your-freepik-api-key
+    UNDRESS_PRIMARY_PROVIDER=xai
+    XAI_UNDRESS_MODEL=grok-imagine-image-pro
+
+    # Imgchest Import
+    IMGCHEST_API_KEY=your-imgchest-key
+
+    # Database Pool Configuration (defaults shown)
+    DB_POOL_MAX=20
+    DB_POOL_MIN=2
+    DB_POOL_IDLE=10000
+    DB_CONNECT_TIMEOUT=10
+    DB_STATEMENT_TIMEOUT=30000
+    DB_QUERY_TIMEOUT=20000
+    ```
+
+    <Warning>
+      **Never commit your `.env` file to version control.** The `.env` file is already in `.gitignore` to prevent accidental commits.
+    </Warning>
+  </Step>
+
+  <Step title="Set Up Local Database">
+    Create a local PostgreSQL database for development:
+
+    ```bash
+    # Using psql
+    createdb joip_dev
+
+    # Or using PostgreSQL client
+    psql -U postgres
+    CREATE DATABASE joip_dev;
+    ```
+
+    <Note>
+      Alternatively, you can use a cloud PostgreSQL instance like **Neon** or **Supabase** for development. Update the `DATABASE_URL` accordingly.
+    </Note>
+  </Step>
+
+  <Step title="Run Database Migrations">
+    Apply the database schema using Drizzle ORM:
+
+    ```bash
+    npm run db:push
+    ```
+
+    This command will:
+    - Create all required tables from `shared/schema.ts`
+    - Set up foreign key constraints and indexes
+    - Initialize the database for local development
+
+    You should see output confirming the schema changes:
+
+    ```
+    Applying schema changes...
+    ✓ Created table: users
+    ✓ Created table: content_sessions
+    ✓ Created table: session_media
+    ...
+    ```
+  </Step>
+
+  <Step title="Start Development Server">
+    Start the development server with hot module reloading:
+
+    ```bash
+    npm run dev
+    ```
+
+    The application will start on **port 5000**:
+
+    ```
+    Server running on http://localhost:5000
+    Vite dev server running on http://localhost:5173
+    ```
+
+    <Note>
+      The Express server runs on port 5000 and serves the API. Vite runs on port 5173 for hot reloading. Vite proxies API requests to the Express server automatically.
+    </Note>
+  </Step>
+
+  <Step title="Verify Setup">
+    Open your browser and navigate to `http://localhost:5000`. You should see the JOIP landing page.
+
+    To verify the setup is working:
+
+    1. **Authentication**: Local development uses a simplified auth strategy (no Replit OIDC)
+    2. **Database**: Check the server logs for successful database connection
+    3. **Storage**: Verify Supabase storage buckets are accessible
+  </Step>
+</Steps>
+
+## Development Workflow
+
+### Running Type Checks
+
+Run TypeScript type checking across the entire codebase:
+
+```bash
+npm run check
+```
+
+This will check both client and server TypeScript files without emitting any output.
+
+### Building for Production
+
+Create an optimized production build:
+
+```bash
+npm run build
+```
+
+This command will:
+1. Generate logo assets via `scripts/generate-logos.mjs`
+2. Bundle the React client with Vite → `dist/public/`
+3. Compile the Express server with esbuild → `dist/index.js`
+
+### Starting Production Server
+
+Run the production build locally:
+
+```bash
+npm start
+```
+
+The server will serve the built client from `dist/public` on port 5000.
+
+## Authentication in Development
+
+Local development uses a **simplified authentication strategy** that differs from production:
+
+<CodeGroup>
+```typescript server/index.ts
+// Production: Replit OIDC
+if (process.env.REPLIT_DOMAINS) {
+  setupReplitAuth(app);
+}
+// Development: Local strategy
+else {
+  setupLocalAuth(app);
+}
+```
+</CodeGroup>
+
+### Local Auth Features
+
+- **No OIDC required**: Simple email/password authentication
+- **Auto-registration**: New users are created automatically
+- **Session persistence**: Uses PostgreSQL session store
+- **User profiles**: Full profile management available
+
+## Supabase Storage Setup
+
+### Creating Storage Buckets
+
+The application requires two Supabase storage buckets:
+
+1. **user-media**: For user-uploaded content (manual sessions, thumbnails)
+2. **general**: For community-shared content
+
+<Steps>
+  <Step title="Create Buckets in Supabase">
+    In your Supabase dashboard:
+
+    1. Navigate to **Storage**
+    2. Click **New bucket**
+    3. Create bucket named `user-media` (Public)
+    4. Create bucket named `general` (Public)
+  </Step>
+
+  <Step title="Configure Bucket Policies">
+    Set the following RLS policies for both buckets:
+
+    ```sql
+    -- Allow authenticated users to upload
+    CREATE POLICY "Allow uploads" ON storage.objects
+    FOR INSERT TO authenticated
+    WITH CHECK (bucket_id = 'user-media');
+
+    -- Allow public read access
+    CREATE POLICY "Public read" ON storage.objects
+    FOR SELECT TO public
+    USING (bucket_id = 'user-media');
+    ```
+  </Step>
+
+  <Step title="Test Storage Connection">
+    Use the storage diagnostics endpoint:
+
+    ```bash
+    curl http://localhost:5000/api/storage/status
+    ```
+
+    Expected response:
+
+    ```json
+    {
+      "status": "healthy",
+      "config": {
+        "url": "https://your-project.supabase.co",
+        "hasAnonKey": true,
+        "hasServiceKey": true
+      },
+      "connectivity": "ok"
+    }
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  **Manual Sessions Require Storage**: If Supabase storage is paused or unreachable, manual session creation will fail with HTTP 503. Use `GET /api/storage/status` to diagnose issues.
+</Warning>
+
+## Common Setup Issues
+
+### Database Connection Errors
+
+**Issue**: `Error: connect ECONNREFUSED ::1:5432`
+
+**Solution**:
+- Verify PostgreSQL is running: `pg_isready`
+- Check `DATABASE_URL` format: `postgresql://user:pass@host:port/db`
+- Ensure database exists: `psql -l`
+
+### Port Already in Use
+
+**Issue**: `Error: listen EADDRINUSE: address already in use :::5000`
+
+**Solution**:
+```bash
+# Find and kill the process using port 5000
+lsof -ti:5000 | xargs kill -9
+```
+
+### Missing API Keys
+
+**Issue**: AI caption generation fails
+
+**Solution**:
+- Verify `OPENROUTER_API_KEY` or `OPENAI_API_KEY` is set
+- Test API key validity with a simple request
+- Check server logs for detailed error messages
+
+### Supabase Storage Errors
+
+**Issue**: `STORAGE_UNREACHABLE` when uploading media
+
+**Solution**:
+- Verify Supabase project is not paused
+- Check `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_KEY`
+- Ensure buckets exist with correct permissions
+- Run `GET /api/storage/status` for diagnostics
+
+## Hot Reloading
+
+### Frontend (Client)
+
+Vite provides instant hot module reloading for:
+- React components
+- CSS/Tailwind changes
+- TypeScript files
+
+Changes appear immediately in the browser without full page reload.
+
+### Backend (Server)
+
+The server uses `tsx` with watch mode:
+- Automatic restart on file changes
+- Preserves database connections
+- Maintains session state
+
+<Note>
+  If hot reloading isn't working, try restarting the dev server with `npm run dev`.
+</Note>
+
+## Next Steps
+
+Once your local environment is set up:
+
+1. [Explore the Project Structure](/guides/development/project-structure) to understand the codebase organization
+2. [Learn about Database Migrations](/guides/development/database-migrations) for schema changes
+3. [Review Testing Guidelines](/guides/development/testing) before contributing
+
+## Development Tools
+
+### Recommended VS Code Extensions
+
+- **ESLint**: Code linting and formatting
+- **Prettier**: Code formatting
+- **Tailwind CSS IntelliSense**: Tailwind class autocompletion
+- **TypeScript Vue Plugin (Volar)**: Enhanced TypeScript support
+- **PostgreSQL**: Database management
+
+### Useful Commands
+
+```bash
+# View database schema
+npx drizzle-kit introspect
+
+# Generate TypeScript types from schema
+npx drizzle-kit generate
+
+# Drop all tables (use with caution!)
+npx drizzle-kit drop
+
+# View running processes
+npm run dev -- --verbose
+```

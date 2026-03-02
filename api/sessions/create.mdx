@@ -1,0 +1,195 @@
+---
+title: "Create Session"
+api: "POST /api/sessions"
+description: "Create a new Reddit-based session with AI-generated captions"
+---
+
+## Authentication
+
+This endpoint requires authentication and credits. Sessions creation requires the `session_create` feature credit.
+
+## Request Body
+
+<ParamField body="title" type="string" required>
+  Session title (minimum 1 character)
+</ParamField>
+
+<ParamField body="subreddits" type="string" required>
+  Comma-separated list of subreddit names (e.g., "joi,femdom,gonewild")
+</ParamField>
+
+<ParamField body="categoryId" type="integer" optional>
+  Category ID to assign to this session
+</ParamField>
+
+<ParamField body="intervalMin" type="integer" default={3}>
+  Minimum slide interval in seconds (1-60)
+</ParamField>
+
+<ParamField body="intervalMax" type="integer" default={10}>
+  Maximum slide interval in seconds (1-60)
+</ParamField>
+
+<ParamField body="transition" type="string" default="fade">
+  Transition effect: "fade", "slide", "zoom", "flip", or "none"
+</ParamField>
+
+<ParamField body="aiPrompt" type="string" optional>
+  Custom AI prompt for caption generation
+</ParamField>
+
+<ParamField body="captionTheme" type="string" optional>
+  Caption theme: "joi", "forced-bi", "beta", "cbt", "cuckold", or "custom"
+</ParamField>
+
+<ParamField body="thumbnail" type="string" optional>
+  Custom thumbnail URL. If not provided, auto-generated from subreddits
+</ParamField>
+
+<ParamField body="isPublic" type="boolean" default={false}>
+  Whether the session is publicly accessible
+</ParamField>
+
+<ParamField body="shareToCommunity" type="boolean" default={false}>
+  Whether to share session to the community feed
+</ParamField>
+
+<ParamField body="isFavorite" type="boolean" default={false}>
+  Whether to mark as favorite
+</ParamField>
+
+<ParamField body="isManualMode" type="boolean" default={false}>
+  Whether to disable auto-advance in the player
+</ParamField>
+
+## Response
+
+Returns the created session object with an automatically assigned ID.
+
+<ResponseField name="id" type="integer">
+  Unique session identifier
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Session title
+</ResponseField>
+
+<ResponseField name="userId" type="string">
+  Owner's user ID
+</ResponseField>
+
+<ResponseField name="subreddits" type="array">
+  Normalized array of subreddit names
+</ResponseField>
+
+<ResponseField name="categoryId" type="integer">
+  Assigned category ID
+</ResponseField>
+
+<ResponseField name="categorySource" type="string">
+  "manual" if explicitly set, "default" if auto-assigned
+</ResponseField>
+
+<ResponseField name="thumbnail" type="string" optional>
+  URL to auto-generated or custom thumbnail
+</ResponseField>
+
+<ResponseField name="createdAt" type="timestamp">
+  Session creation timestamp
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.joip.io/api/sessions" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: connect.sid=YOUR_SESSION_COOKIE" \
+  -d '{
+    "title": "My JOI Session",
+    "subreddits": "joi,femdom",
+    "intervalMin": 5,
+    "intervalMax": 15,
+    "transition": "fade",
+    "captionTheme": "joi",
+    "isPublic": false,
+    "isFavorite": true
+  }'
+```
+
+```bash With Custom AI Prompt
+curl -X POST "https://app.joip.io/api/sessions" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: connect.sid=YOUR_SESSION_COOKIE" \
+  -d '{
+    "title": "Custom Captions",
+    "subreddits": "gonewild,nsfw",
+    "captionTheme": "custom",
+    "aiPrompt": "Generate teasing captions with a playful tone",
+    "intervalMin": 3,
+    "intervalMax": 8
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201 - Created
+{
+  "id": 456,
+  "title": "My JOI Session",
+  "userId": "user_abc123",
+  "subreddits": ["joi", "femdom"],
+  "categoryId": 1,
+  "categorySource": "default",
+  "intervalMin": 5,
+  "intervalMax": 15,
+  "transition": "fade",
+  "thumbnail": "https://i.redd.it/auto-generated.jpg",
+  "aiPrompt": null,
+  "captionTheme": "joi",
+  "isPublic": false,
+  "shareToCommunity": false,
+  "isFavorite": true,
+  "isManualMode": false,
+  "isImported": false,
+  "createdAt": "2025-03-02T11:00:00Z",
+  "updatedAt": "2025-03-02T11:00:00Z"
+}
+```
+
+```json 400 - Validation Error
+{
+  "message": "Validation error: intervalMax must be greater than or equal to intervalMin"
+}
+```
+
+```json 400 - No Valid Subreddits
+{
+  "message": "At least one valid subreddit is required"
+}
+```
+
+```json 402 - Insufficient Credits
+{
+  "error": "Insufficient credits",
+  "code": "INSUFFICIENT_CREDITS",
+  "required": 1,
+  "current": 0,
+  "featureKey": "session_create"
+}
+```
+
+```json 403 - Premium Only
+{
+  "error": "This feature is only available for Premium subscribers",
+  "code": "PREMIUM_ONLY",
+  "featureKey": "session_create"
+}
+```
+</ResponseExample>
+
+## Notes
+
+- The server automatically pre-populates the session with up to 25 media items in the background
+- Subreddits are normalized (lowercased, `r/` prefix removed)
+- If `categoryId` is not provided, the session is assigned to the "Uncategorized" category
+- Credits are deducted after successful creation
+- Activity is tracked for analytics

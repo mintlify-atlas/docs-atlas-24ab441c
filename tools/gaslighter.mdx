@@ -1,0 +1,267 @@
+---
+title: Gaslighter
+description: Browse Reddit content with swapped media from different subreddits
+---
+
+## Overview
+
+Gaslighter is a unique Reddit content browser that displays posts from a target subreddit while replacing the media with content from source subreddits. This creates an entertaining mismatch between post titles and the actual media shown.
+
+## How It Works
+
+<Steps>
+  <Step title="Configure Subreddits">
+    Choose a **target subreddit** whose titles you want to see, and one or more **source subreddits** whose media will be displayed.
+  </Step>
+  
+  <Step title="Set Viewing Options">
+    Adjust view mode (large/compact), sort order (hot/new/top), and media filters to customize your browsing experience.
+  </Step>
+  
+  <Step title="Browse Content">
+    Scroll through posts where titles from the target subreddit are paired with media from your source subreddits.
+  </Step>
+  
+  <Step title="Optional: Enable Autoscroll">
+    Turn on autoscroll for hands-free browsing with adjustable speed controls.
+  </Step>
+</Steps>
+
+## Configuration Options
+
+### Subreddit Settings
+
+<AccordionGroup>
+  <Accordion title="Target Subreddit">
+    The subreddit whose post titles will be displayed. Enter the subreddit name without the "r/" prefix.
+    
+    **Examples:**
+    - `pics`
+    - `funny`
+    - `aww`
+  </Accordion>
+  
+  <Accordion title="Source Subreddits">
+    One or more subreddits whose media will replace the target subreddit's media. Separate multiple subreddits with commas.
+    
+    **Examples:**
+    - `earthporn, spaceporn`
+    - `art, itookapicture`
+    - `natureisfuckinglit`
+    
+    <Note>
+      The app automatically normalizes subreddit names by removing "r/" prefixes and converting to lowercase.
+    </Note>
+  </Accordion>
+  
+  <Accordion title="Replacement Name (Optional)">
+    Replace occurrences of the target subreddit name in post titles with custom text. This adds an extra layer of the "gaslighting" effect.
+    
+    **Example:**
+    - Target: `cats`
+    - Replacement: `dogs`
+    - Result: "My cat loves treats" becomes "My dog loves treats"
+  </Accordion>
+</AccordionGroup>
+
+### View Settings
+
+<AccordionGroup>
+  <Accordion title="View Mode">
+    Choose how posts are displayed:
+    
+    - **Large**: Full-size media with prominent titles
+    - **Compact**: Smaller thumbnails with condensed layout for faster browsing
+  </Accordion>
+  
+  <Accordion title="Sort Order">
+    Control the order of posts from the target subreddit:
+    
+    - **Hot**: Currently trending posts
+    - **New**: Most recent posts
+    - **Top**: Highest-rated posts within a time period
+  </Accordion>
+  
+  <Accordion title="Top Time Filter">
+    When using "Top" sorting, select the time range:
+    
+    - **Hour**: Top posts from the last hour
+    - **Day**: Top posts from today
+    - **Week**: Top posts from this week
+    - **Month**: Top posts from this month
+    - **Year**: Top posts from this year
+    - **All Time**: All-time top posts
+  </Accordion>
+</AccordionGroup>
+
+### Media Filters
+
+Control which types of media appear in your feed:
+
+- **Images**: Static image posts (JPEG, PNG, WebP)
+- **Videos**: Video content (MP4, WebM)
+- **GIFs**: Animated GIF content
+
+<Note>
+At least one media type must be enabled. The app will automatically re-enable images if all types are disabled.
+</Note>
+
+## Autoscroll Feature
+
+Gaslighter includes an autoscroll feature for hands-free browsing:
+
+### Enabling Autoscroll
+
+1. Toggle the autoscroll switch to ON
+2. Adjust the speed slider (1-20)
+3. Use the pause button to temporarily stop scrolling
+4. Autoscroll automatically pauses when you open media in fullscreen
+
+### Speed Presets
+
+- **Slow (10)**: Leisurely browsing pace
+- **Medium (15)**: Moderate scrolling speed
+- **Fast (20)**: Quick browsing
+
+<Warning>
+Autoscroll will automatically pause when you interact with posts or open media modals. Resume it manually when ready to continue.
+</Warning>
+
+## Practical Examples
+
+### Example 1: News Headlines with Cat Pictures
+
+```text
+Target: worldnews
+Source: cats, aww
+Replacement Name: (leave empty)
+```
+
+Result: Serious news headlines paired with adorable cat photos.
+
+### Example 2: Funny Titles with Nature Photos
+
+```text
+Target: funny
+Source: earthporn, natureporn
+Replacement Name: (leave empty)
+```
+
+Result: Humorous titles with stunning landscape photography.
+
+### Example 3: Relationship Advice with Food
+
+```text
+Target: relationship_advice
+Source: food, foodporn
+Replacement Name: partner → sandwich
+```
+
+Result: Relationship posts where "partner" is replaced with "sandwich" and paired with food images.
+
+## How Media Selection Works
+
+<Steps>
+  <Step title="Fetch Target Posts">
+    Gaslighter retrieves up to 100 posts from your target subreddit based on your sort settings.
+  </Step>
+  
+  <Step title="Load Source Media">
+    Media is fetched from your source subreddits and pooled together.
+  </Step>
+  
+  <Step title="Random Pairing">
+    Each target post is randomly paired with media from the source pool, creating unexpected combinations.
+  </Step>
+  
+  <Step title="Infinite Scrolling">
+    As you scroll, more posts are automatically loaded and paired with fresh source media.
+  </Step>
+</Steps>
+
+## Storage and Persistence
+
+Your Gaslighter settings are automatically saved to browser localStorage:
+
+- Target and source subreddits
+- View mode and sort preferences
+- Media filter selections
+- Autoscroll state and speed
+- Replacement name configuration
+
+<Note>
+Settings persist across sessions, so your preferred configuration is remembered when you return.
+</Note>
+
+## Tips and Best Practices
+
+<AccordionGroup>
+  <Accordion title="Choose Contrasting Subreddits">
+    The most entertaining results come from pairing subreddits with very different themes. Try news with memes, serious topics with cute animals, or technical content with art.
+  </Accordion>
+  
+  <Accordion title="Use Multiple Source Subreddits">
+    Adding 2-3 source subreddits provides more variety in the media pool and prevents repetition.
+  </Accordion>
+  
+  <Accordion title="Experiment with Replacement Names">
+    The replacement name feature can create hilarious effects. Try replacing technical terms with casual words, or serious topics with silly alternatives.
+  </Accordion>
+  
+  <Accordion title="Adjust View Mode for Your Device">
+    Use compact view on mobile for faster loading and easier scrolling. Large view works great on desktop for enjoying media in full detail.
+  </Accordion>
+</AccordionGroup>
+
+## Technical Details
+
+### API Integration
+
+- Uses the `/api/fetch-reddit` endpoint which filters for media URLs
+- Fetches up to 100 posts per request for optimal performance
+- Implements rate limiting with exponential backoff
+- Supports jittered one-time retries to reduce transient failures
+
+### Deduplication
+
+- Tracks shown target post IDs to prevent duplicates
+- Normalizes media URLs to avoid showing the same content twice
+- Maintains a queue system for smooth infinite scrolling
+
+### Performance Optimizations
+
+- Lazy loading of media as you scroll
+- Efficient state management with React hooks
+- Debounced settings updates to prevent excessive re-renders
+- IntersectionObserver for efficient load-more triggering
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="No Posts Loading">
+    - Verify subreddit names are spelled correctly
+    - Check that at least one media filter is enabled
+    - Try a different target or source subreddit
+    - Ensure you have a stable internet connection
+  </Accordion>
+  
+  <Accordion title="Media Not Displaying">
+    - Check your media filter settings
+    - Some subreddits may have limited media content
+    - Try adding additional source subreddits
+    - Clear browser cache and reload the page
+  </Accordion>
+  
+  <Accordion title="Autoscroll Not Working">
+    - Ensure autoscroll is toggled ON
+    - Check that you're not in a paused state
+    - Try adjusting the speed to a higher value
+    - Close any open media modals
+  </Accordion>
+  
+  <Accordion title="Settings Not Saving">
+    - Check browser localStorage is enabled
+    - Verify you're not in private/incognito mode
+    - Try clearing site data and reconfiguring
+  </Accordion>
+</AccordionGroup>

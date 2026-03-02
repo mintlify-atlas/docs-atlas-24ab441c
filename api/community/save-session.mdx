@@ -1,0 +1,163 @@
+---
+title: 'Save Community Session'
+api: 'POST /api/community/sessions/:id/save'
+description: 'Save a community session to your personal library'
+---
+
+## Overview
+
+This endpoint creates a copy of a community-shared session in your personal session library. The session media is copied to your storage, preserving all captions and order.
+
+## Authentication
+
+This endpoint requires authentication and consumes credits based on the `session_create` feature pricing.
+
+## Path Parameters
+
+<ParamField path="id" type="number" required>
+  The community session ID to save
+</ParamField>
+
+## Credit Requirements
+
+- **Feature**: `session_create`
+- **Behavior**: This endpoint checks if you have sufficient credits before creating the session copy
+- **Deduplication**: If you've already saved this specific community session, the existing session ID is returned without consuming additional credits
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  Always `true` on successful save
+</ResponseField>
+
+<ResponseField name="sessionId" type="number">
+  The ID of the saved session in your library
+</ResponseField>
+
+<ResponseField name="reused" type="boolean" optional>
+  `true` if the session was already saved previously (no new credits consumed)
+</ResponseField>
+
+## How It Works
+
+1. **Deduplication Check**: The system first checks if you've already saved this community session to avoid duplicates
+2. **Credit Validation**: Ensures you have sufficient credits to create a new session
+3. **Session Creation**: Creates a new session in your library with:
+   - The same title, settings, and metadata
+   - `importSource` set to `"community"`
+   - `importUrl` set to `"community:{id}"`
+   - Session marked as non-public by default
+4. **Media Copy**: Copies all session media:
+   - If media is in Supabase GENERAL bucket, it's copied to your personal `user-media` storage
+   - Preserves captions, order, and media types
+   - Creates new `session_media` records linked to your session
+
+## Examples
+
+### Save a Community Session
+
+```bash
+curl -X POST "https://app.joip.io/api/community/sessions/123/save" \
+  -H "Cookie: session=..." \
+  -H "Content-Type: application/json"
+```
+
+### Response (New Save)
+
+```json
+{
+  "success": true,
+  "sessionId": 456,
+  "reused": false
+}
+```
+
+### Response (Already Saved)
+
+```json
+{
+  "success": true,
+  "sessionId": 456,
+  "reused": true
+}
+```
+
+## Error Responses
+
+### Invalid Session ID
+
+**Status**: `400 Bad Request`
+
+```json
+{
+  "message": "Invalid session ID"
+}
+```
+
+### Session Not Found or Not Public
+
+**Status**: `404 Not Found`
+
+```json
+{
+  "message": "Session not found or not public"
+}
+```
+
+### Session Not Shared to Community
+
+**Status**: `403 Forbidden`
+
+```json
+{
+  "message": "This session is not shared to the community"
+}
+```
+
+### Insufficient Credits
+
+**Status**: `402 Payment Required`
+
+```json
+{
+  "error": "Insufficient credits",
+  "code": "INSUFFICIENT_CREDITS",
+  "required": 10,
+  "current": 5,
+  "featureKey": "session_create"
+}
+```
+
+### Premium Only Feature
+
+**Status**: `403 Forbidden`
+
+```json
+{
+  "error": "This feature is only available for Premium subscribers",
+  "code": "PREMIUM_ONLY",
+  "featureKey": "session_create"
+}
+```
+
+### Session Pricing Not Configured
+
+**Status**: `503 Service Unavailable`
+
+```json
+{
+  "error": "Session pricing is not configured",
+  "code": "FEATURE_PRICING_MISSING",
+  "featureKey": "session_create"
+}
+```
+
+## Notes
+
+- The saved session is private by default (not shared to community)
+- The saved session is not marked as a favorite by default
+- Media files are copied to `users/{userId}/manual-sessions/{sessionId}/` in your storage
+- The saved session maintains the same category as the original
+- If the community session was imported from another source, the `isImported` flag is preserved
+- Subreddit lists are preserved but the session won't fetch new media (it uses the copied media)
+- The saved session can be edited, deleted, or shared like any other session in your library

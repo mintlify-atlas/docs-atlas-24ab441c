@@ -1,0 +1,473 @@
+---
+title: 'Community'
+description: 'Discover and share sessions and media with the JOIP community'
+icon: 'users'
+---
+
+The Community feed is your hub for discovering sessions and media shared by other JOIP users, and showcasing your own creations.
+
+## Overview
+
+Community provides:
+- **Unified Feed**: Browse sessions and media in one place
+- **Advanced Search**: Filter by creator, subreddit, character, tags
+- **Like System**: Show appreciation for great content
+- **Save Feature**: Copy community content to your library
+- **Deep Previews**: View session details before saving
+
+## Browsing the Feed
+
+The main Community page shows a grid of shared content:
+
+### Content Types
+
+All content appears in a single feed, with visual indicators:
+
+**Sessions** (Video icon badge)
+- Thumbnail preview
+- Session title
+- Creator name (clickable)
+- Subreddit badges or "Custom" badge
+- Like count
+- Tags (if any)
+
+**Media** (Image badge)
+- Image preview
+- Filename
+- Source badge (Smart Caption, BabeCock, etc.)
+- Creator name (clickable)
+- Character name (if set)
+- Like count
+- Tags (if any)
+
+<Note>
+  Content from admin users shows "⚡️Joip" as the creator name.
+</Note>
+
+## Search and Filtering
+
+### Universal Search Bar
+
+The search bar at the top provides powerful filtering:
+
+**Text Search**
+- Searches: titles, filenames, creator names, subreddits, captions
+- Real-time filtering (300ms debounce)
+- Case-insensitive matching
+
+**Filter Chips**
+
+Click chips to add filters:
+
+<CardGroup cols={2}>
+  <Card title="Creator" icon="user">
+    Filter by content creator:
+    - Type name to search
+    - Click user badge on cards for quick filter
+    - Shows creator's full name or email
+  </Card>
+  
+  <Card title="Subreddit" icon="reddit" iconType="duotone">
+    Filter by source subreddit:
+    - Only shows Reddit-sourced content
+    - Type `r/subreddit` or just `subreddit`
+    - Auto-suggestions as you type
+  </Card>
+  
+  <Card title="Character" icon="sparkles">
+    Filter by character name:
+    - Only shows media with character tags
+    - Click purple character badges for quick filter
+    - Useful for finding specific people
+  </Card>
+  
+  <Card title="Tags" icon="tag">
+    Filter by user-added tags:
+    - Multiple tag selection
+    - AND/OR mode toggle
+    - Auto-suggestions from existing tags
+  </Card>
+</CardGroup>
+
+**Tag Filtering Modes**
+- **Match All (AND)**: Results must have ALL selected tags
+- **Match Any (OR)**: Results must have ANY selected tag
+
+Toggle between modes using the switch next to tag chips.
+
+### Sorting
+
+Sort dropdown options:
+- **Hot**: Popular content (likes + recency)
+- **New**: Most recently shared (default)
+- **Top**: Highest like count overall
+
+<Note>
+  Sort preferences persist in URL query parameters, so you can bookmark specific filter combinations.
+</Note>
+
+## Interacting with Content
+
+### Session Actions
+
+<Tabs>
+  <Tab title="Preview">
+    Click any session card to open preview modal:
+    
+    **Preview Modal Shows**:
+    - Full session title
+    - Thumbnail/preview image
+    - Creator information (with click-to-filter)
+    - Creation date
+    - Subreddit list or "Custom Session" badge
+    - Like count
+    - Session tags (clickable)
+    - Description (if available)
+    
+    **Available Actions**:
+    - **Play**: Save and immediately play session
+    - **Save**: Copy to your Sessions library
+    - **Close**: Return to feed
+    
+    <Note>
+      Preview modal supports deep-linking: `?session={id}` opens preview automatically.
+    </Note>
+  </Tab>
+  
+  <Tab title="Play">
+    Click **Play** button on card or in preview:
+    
+    **What Happens**:
+    1. Session copied to your library (if not already saved)
+    2. Media copied from community storage to your storage
+    3. Session opens in player
+    4. Costs **25 credits** (first save only)
+    
+    <Warning>
+      Playing a community session requires credits for the initial save. Subsequent plays are free.
+    </Warning>
+  </Tab>
+  
+  <Tab title="Save">
+    Click **Save** button:
+    
+    **What Happens**:
+    1. Creates new session in your library
+    2. Copies all media files
+    3. Preserves captions, order, and settings
+    4. Redirects to your session edit page
+    5. Costs **25 credits** (one-time)
+    
+    **After Saving**:
+    - Full editing access (subreddits, theme, timing, etc.)
+    - Can modify or delete without affecting original
+    - Your copy is independent
+    
+    <Note>
+      If you previously saved this session, it opens your existing copy (no credit cost).
+    </Note>
+  </Tab>
+</Tabs>
+
+### Media Actions
+
+<Tabs>
+  <Tab title="Save Media">
+    Click **Save** button on media card:
+    
+    **What Happens**:
+    1. Media copied to your Media Vault
+    2. Preserves filename, character name, metadata
+    3. Appears in vault with source badge
+    4. No credit cost
+    
+    **After Saving**:
+    - Full file management (rename, share, delete)
+    - Independent from community version
+  </Tab>
+  
+  <Tab title="Open Original">
+    Click **external link icon**:
+    
+    Opens media in new tab at full resolution.
+    
+    Use for:
+    - Quick viewing without saving
+    - Copying image URL
+    - Sharing direct link
+  </Tab>
+</Tabs>
+
+### Liking Content
+
+Show appreciation by liking content:
+
+**How to Like**:
+- Click the **heart icon** on any session or media card
+- Heart fills in red when liked
+- Click again to unlike
+
+**Like Count**:
+- Displayed next to heart icon
+- Tabular numbers for clean alignment
+- Updates in real-time
+
+**Impact on Sorting**:
+- "Hot" sort weighs likes heavily
+- "Top" sort ranks by total likes
+- Your likes are private (others can't see what you liked)
+
+<Note>
+  Liking is free and unlimited. It helps surface quality content for other users.
+</Note>
+
+## Sharing Your Content
+
+### Sharing Sessions
+
+<Steps>
+  <Step title="Make Session Public">
+    From your Sessions page:
+    1. Click **Share** on any session
+    2. Toggle **Public** to ON
+    3. This makes session visible in Community
+  </Step>
+  
+  <Step title="Enable Community Sharing">
+    In the share dialog:
+    - Toggle **Share to Community** to ON (default)
+    - This creates a snapshot in community feed
+    
+    <Warning>
+      Turning OFF "Share to Community" removes the session from the feed (even if Public is ON).
+    </Warning>
+  </Step>
+  
+  <Step title="Manage Shared Session">
+    To update or remove:
+    1. Open share dialog again
+    2. Edit title, description, tags
+    3. Toggle community sharing off to remove from feed
+    
+    **What Gets Shared**:
+    - Session metadata (title, thumbnail, subreddits)
+    - All media files (copied to community storage)
+    - User-added tags
+    - Your user info (name/email)
+  </Step>
+</Steps>
+
+### Sharing Media
+
+<Steps>
+  <Step title="Share from Media Vault">
+    Open Media Vault:
+    1. Click **Share** icon on any media
+    2. Toggle **Share to Community** to ON (default)
+    3. Click **Share** to confirm
+  </Step>
+  
+  <Step title="Share from Tools">
+    When saving from Smart Captions or BabeCock:
+    - Click **Save to Vault**
+    - Media auto-shares to community by default
+    - Unshare later from vault if needed
+  </Step>
+  
+  <Step title="Manage Shared Media">
+    To update or remove:
+    1. Open share dialog in vault
+    2. Toggle community sharing off to remove from feed
+    3. Media remains in your vault
+  </Step>
+</Steps>
+
+<Note>
+  Shared media is copied to the `general` storage bucket for durability. Deleting from your vault doesn't affect the community version.
+</Note>
+
+## Admin Features
+
+<Note>
+  Only visible to admin users.
+</Note>
+
+### Hide/Unhide Content
+
+Admins can moderate community content:
+
+- **Eye icon**: Visible in community
+- **Eye-off icon**: Hidden from community (yellow badge shows "Hidden")
+
+Click to toggle visibility. Hidden content:
+- Not visible to regular users
+- Still accessible by creator
+- Can be unhidden at any time
+
+### Edit Like Count
+
+Admins can manually adjust like counts:
+
+1. Click **pencil icon** on session or media card
+2. Enter new like count
+3. Click **Save**
+
+Use for:
+- Seeding initial likes on quality content
+- Correcting errors
+- Boosting underappreciated content
+
+## Advanced Search Examples
+
+<AccordionGroup>
+  <Accordion title="Find Sessions by Specific Creator">
+    1. Click any creator badge on a card
+    2. Feed filters to that creator's content
+    3. Or manually type creator name in search
+    
+    **Use Case**: Following a prolific creator's work
+  </Accordion>
+  
+  <Accordion title="Search Specific Character">
+    1. Click purple character badge on media
+    2. Feed filters to that character
+    3. Or type character name in search
+    
+    **Use Case**: Finding all content featuring a specific person
+  </Accordion>
+  
+  <Accordion title="Combine Multiple Filters">
+    Example: Find JOI sessions from r/goddesses by specific creator:
+    
+    1. Text search: "joi"
+    2. Add creator filter chip
+    3. Add subreddit filter: "goddesses"
+    4. Sort by "Top"
+    
+    **Result**: Highly specific filtered view
+  </Accordion>
+  
+  <Accordion title="Tag-Based Discovery">
+    1. Add tag filter: "blonde"
+    2. Add tag filter: "joi"
+    3. Set mode to "Match All" (AND)
+    4. Sort by "Hot"
+    
+    **Result**: Trending blonde JOI content
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Sharing Quality Content">
+    **Before sharing**:
+    - Test playback to ensure session works
+    - Verify all media loads correctly
+    - Add descriptive tags for discoverability
+    - Use clear, descriptive titles
+    - Set appropriate category
+    
+    **After sharing**:
+    - Monitor likes and feedback
+    - Update tags if content isn't discovered
+    - Remove low-performing content
+  </Accordion>
+  
+  <Accordion title="Discovering Content">
+    **Use filters strategically**:
+    - Start broad (just sort by Hot/New)
+    - Add filters to narrow down
+    - Click badges on cards for quick filtering
+    - Bookmark URLs with your favorite filters
+    
+    **Engage with creators**:
+    - Like content you enjoy
+    - Filter by creator to see their other work
+    - Save sessions for later playback
+  </Accordion>
+  
+  <Accordion title="Managing Saved Content">
+    **Keep library organized**:
+    - Only save content you'll actually use
+    - Edit saved sessions to customize
+    - Delete unsuccessful saves
+    - Use favorites to mark best finds
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Can't save session (insufficient credits)">
+    **Issue**: Saving costs 25 credits, you don't have enough
+    
+    **Solution**:
+    - Purchase more credits
+    - Or use the preview modal to view without saving
+    - Bookmark session URL to save later
+  </Accordion>
+  
+  <Accordion title="Saved session missing media">
+    **Possible causes**:
+    - Source images deleted from community
+    - Network timeout during copy
+    - Storage quota exceeded
+    
+    **Solutions**:
+    - Try saving again
+    - Contact support if media is missing
+    - Original creator may have removed content
+  </Accordion>
+  
+  <Accordion title="Can't find shared content">
+    **Possible causes**:
+    - Content hidden by admin
+    - Creator unshared it
+    - Filters hiding it
+    
+    **Solutions**:
+    - Clear all filters and search
+    - Try different sort order
+    - Ask creator to verify sharing settings
+  </Accordion>
+  
+  <Accordion title="Shared content not appearing">
+    **For sessions**:
+    - Verify "Public" is ON
+    - Verify "Share to Community" is ON
+    - Wait a few seconds for snapshot creation
+    - Refresh Community page
+    
+    **For media**:
+    - Verify vault share toggle is ON
+    - Check that file uploaded successfully
+    - Refresh Community page
+  </Accordion>
+</AccordionGroup>
+
+## Privacy and Safety
+
+<Warning>
+  **Shared Content is Public**
+  
+  Content shared to community:
+  - Visible to all JOIP users
+  - Cannot be made private after sharing (must unshare/delete)
+  - Includes your user info (name/email)
+  - May be saved by other users before you unshare
+</Warning>
+
+**Best Practices**:
+- Only share content you're comfortable being public
+- Use professional/anonymous display name if privacy-conscious
+- Review shared content periodically
+- Unshare outdated or unwanted content
+- Report inappropriate content to admins
+
+## Related Features
+
+- [Sessions](/features/sessions) - Create and manage sessions
+- [Media Vault](/features/media-vault) - Organize your media
+- [Smart Captions](/features/smart-captions) - Create shareable captions
+- [BabeCock Studio](/features/babecock-studio) - Create shareable combinations

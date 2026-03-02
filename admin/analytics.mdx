@@ -1,0 +1,496 @@
+---
+title: 'Usage Analytics & Tracking'
+description: 'Comprehensive analytics dashboard for monitoring platform usage and user activity'
+icon: 'chart-line'
+---
+
+## Overview
+
+The JOIP platform includes a robust analytics system that tracks user activity, feature usage, and system performance. Analytics are accessible via the **Analytics** and **Usage** tabs in the admin panel.
+
+## Analytics Dashboard
+
+Access platform-wide statistics via:
+
+```typescript
+GET /api/admin/analytics
+```
+
+### Key Metrics
+
+<CardGroup cols={2}>
+  <Card title="User Growth" icon="users">
+    - **Total Users** - All registered accounts
+    - **New Users** - Signups in last 30 days
+    - **Active Users** - Users with sessions in last 30 days
+  </Card>
+  
+  <Card title="Content Creation" icon="file-text">
+    - **Total Sessions** - All JOIP sessions created
+    - **Total Media** - Files in all Media Vaults
+  </Card>
+  
+  <Card title="Revenue Tracking" icon="dollar-sign">
+    - **Estimated Revenue** - Total from credit purchases
+    - **Subscription Revenue** - Premium tier revenue (deprecated)
+  </Card>
+  
+  <Card title="Feature Usage" icon="chart-bar">
+    - **Caption Generation** - AI caption requests
+    - **Babecock Studio** - Image compositions created
+    - **Media Uploads** - Files uploaded to platform
+  </Card>
+</CardGroup>
+
+## Usage Analytics
+
+Detailed usage tracking is available at:
+
+```typescript
+GET /api/admin/usage-analytics
+```
+
+This endpoint provides comprehensive breakdowns of:
+
+### Feature-Level Analytics
+
+| Feature | Tracked Metrics |
+|---------|----------------|
+| **Sessions** | Created, viewed, edited, deleted, shared, favorited |
+| **Smart Captions** | Generated, custom created, theme distribution |
+| **Babecock Studio** | Images created, remixes, layout distribution |
+| **Media Gallery** | Uploaded, deleted, shared, downloaded, bulk downloads |
+| **Admin Panel** | Actions performed, users managed, settings changed |
+
+### User Activity Breakdown
+
+The most active users are ranked by total activity score:
+
+```typescript
+const calculateUserTotalActivity = (user: any) => {
+  return (
+    (user.sessionsCreated || 0) +
+    (user.smartCaptionsGenerated || 0) +
+    (user.customCaptionsGenerated || 0) +
+    (user.babecockImagesCreated || 0) +
+    (user.mediaUploaded || 0)
+  );
+};
+```
+
+Top 5 most active users are displayed with:
+- User profile (name, email, avatar)
+- Activity breakdown by feature
+- Total activity score
+- Last activity timestamp
+
+## Usage Summary
+
+A condensed summary is available via:
+
+```typescript
+GET /api/admin/usage-summary
+```
+
+This provides aggregated metrics without individual user breakdowns.
+
+## User-Specific Analytics
+
+View detailed usage for individual users:
+
+```typescript
+GET /api/admin/users/:userId/usage
+```
+
+### Returned Data Structure
+
+```json
+{
+  "userId": "user-123",
+  "usageStats": {
+    "sessionsCreated": 15,
+    "sessionsViewed": 120,
+    "smartCaptionsGenerated": 45,
+    "captionThemeJoi": 20,
+    "captionThemeForcedBi": 15,
+    "babecockImagesCreated": 8,
+    "mediaUploaded": 30,
+    "loginCount": 50,
+    "lastActivityAt": "2024-03-15T14:30:00Z"
+  },
+  "recentActivity": [
+    {
+      "action": "session_created",
+      "feature": "sessions",
+      "timestamp": "2024-03-15T14:30:00Z"
+    }
+  ]
+}
+```
+
+## Activity Logging System
+
+All user interactions are tracked via the `usageTracking.ts` module.
+
+### Tracked Events
+
+<AccordionGroup>
+  <Accordion title="Session Actions" icon="file-text">
+    - `session_created` - New session created
+    - `session_viewed` - Session opened in player
+    - `session_edited` - Session metadata updated
+    - `session_deleted` - Session removed
+    - `session_shared` - Share code generated
+    - `session_favorited` - Added to favorites
+    - `session_refreshed` - Media refreshed from Reddit
+  </Accordion>
+  
+  <Accordion title="Caption Actions" icon="wand-magic-sparkles">
+    - `smart_caption_generated` - AI caption created
+    - `custom_caption_created` - Manual caption written
+    - `caption_regenerated` - Caption regenerated in player
+    - `theme_selected` - Caption theme chosen (JOI, Forced-Bi, etc.)
+  </Accordion>
+  
+  <Accordion title="Babecock Actions" icon="images">
+    - `babecock_created` - New composition generated
+    - `babecock_remix` - Existing composition remixed
+    - `layout_detected` - Layout automatically determined
+  </Accordion>
+  
+  <Accordion title="Media Actions" icon="folder">
+    - `media_uploaded` - File uploaded to vault
+    - `media_deleted` - File removed from vault
+    - `media_shared` - Media shared to community
+    - `media_downloaded` - File downloaded
+    - `bulk_download` - Multiple files downloaded as ZIP
+  </Accordion>
+  
+  <Accordion title="Admin Actions" icon="shield-check">
+    - `analytics_viewed` - Analytics dashboard accessed
+    - `user_updated` - User profile modified
+    - `user_role_updated` - User role changed
+    - `user_deleted` - User account deleted
+    - `settings_updated` - System settings changed
+    - `audit_logs_viewed` - Audit logs accessed
+  </Accordion>
+</AccordionGroup>
+
+### Tracking Functions
+
+The `usageTracking.ts` module exports specialized tracking functions:
+
+```typescript
+// Session tracking
+await trackSessionAction(userId, 'created', sessionId, {
+  title: session.title,
+  subreddits: session.subreddits,
+  captionTheme: session.captionTheme
+});
+
+// Caption tracking
+await trackCaptionAction(userId, 'smart_caption_generated', {
+  theme: 'JOI',
+  captionLength: caption.length
+});
+
+// Admin tracking
+await trackAdminAction('user_deleted', userId, {
+  targetUserId: deletedUserId,
+  reason: 'spam'
+});
+```
+
+### Activity Log Schema
+
+Activity logs are stored in `user_activity_logs`:
+
+```sql
+CREATE TABLE user_activity_logs (
+  id SERIAL PRIMARY KEY,
+  userId VARCHAR REFERENCES users(id),
+  action VARCHAR NOT NULL,
+  feature VARCHAR NOT NULL,
+  details JSONB,
+  ipAddress VARCHAR,
+  userAgent TEXT,
+  sessionId VARCHAR,
+  createdAt TIMESTAMP DEFAULT NOW()
+);
+```
+
+## Usage Statistics Table
+
+Aggregated statistics are maintained in `user_usage_stats`:
+
+```sql
+CREATE TABLE user_usage_stats (
+  id SERIAL PRIMARY KEY,
+  userId VARCHAR UNIQUE REFERENCES users(id),
+  
+  -- Session metrics
+  sessionsCreated INTEGER DEFAULT 0,
+  sessionsViewed INTEGER DEFAULT 0,
+  sessionsEdited INTEGER DEFAULT 0,
+  sessionsDeleted INTEGER DEFAULT 0,
+  sessionsShared INTEGER DEFAULT 0,
+  sessionsFavorited INTEGER DEFAULT 0,
+  
+  -- Caption metrics
+  smartCaptionsGenerated INTEGER DEFAULT 0,
+  customCaptionsGenerated INTEGER DEFAULT 0,
+  captionThemeJoi INTEGER DEFAULT 0,
+  captionThemeForcedBi INTEGER DEFAULT 0,
+  captionThemeBeta INTEGER DEFAULT 0,
+  captionThemeCbt INTEGER DEFAULT 0,
+  captionThemeCuckold INTEGER DEFAULT 0,
+  
+  -- Babecock metrics
+  babecockImagesCreated INTEGER DEFAULT 0,
+  babecockRemixesCreated INTEGER DEFAULT 0,
+  babecockLayoutsSideBySide INTEGER DEFAULT 0,
+  babecockLayoutsTopBottom INTEGER DEFAULT 0,
+  
+  -- Media metrics
+  mediaUploaded INTEGER DEFAULT 0,
+  mediaDeleted INTEGER DEFAULT 0,
+  mediaShared INTEGER DEFAULT 0,
+  mediaDownloaded INTEGER DEFAULT 0,
+  bulkDownloads INTEGER DEFAULT 0,
+  
+  -- General metrics
+  loginCount INTEGER DEFAULT 0,
+  pagesViewed INTEGER DEFAULT 0,
+  apiCallsTotal INTEGER DEFAULT 0,
+  timeSpentMinutes INTEGER DEFAULT 0,
+  
+  firstActivityAt TIMESTAMP,
+  lastActivityAt TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT NOW()
+);
+```
+
+### Statistics Update
+
+Statistics are updated in real-time via:
+
+```typescript
+const trackUserActivity = async (
+  userId: string,
+  action: string,
+  feature: string,
+  details?: any
+) => {
+  // Insert activity log
+  await db.insert(userActivityLogs).values({
+    userId,
+    action,
+    feature,
+    details,
+    createdAt: new Date()
+  });
+  
+  // Update aggregated stats
+  await updateUserUsageStats(userId, action);
+};
+```
+
+## Analytics Visualization
+
+The admin UI displays analytics using:
+
+### Metric Cards
+
+- Icon indicators for each metric category
+- Current value with trend indicator
+- Percentage change from previous period
+- Gradient backgrounds for visual hierarchy
+
+### User Activity Tables
+
+- Sortable columns by activity type
+- Filterable by date range
+- Exportable to CSV
+- Drill-down to individual user details
+
+### Feature Usage Icons
+
+```typescript
+const getFeatureIcon = (feature: string) => {
+  switch (feature) {
+    case 'sessions': return <Image className="h-4 w-4" />;
+    case 'smart_captions': return <Sparkles className="h-4 w-4" />;
+    case 'babecock_studio': return <Layers className="h-4 w-4" />;
+    case 'media_gallery': return <Upload className="h-4 w-4" />;
+    case 'admin': return <Eye className="h-4 w-4" />;
+    default: return <Activity className="h-4 w-4" />;
+  }
+};
+```
+
+## Referral Analytics
+
+The platform includes a referral tracking system:
+
+```typescript
+GET /api/admin/referrals/stats
+```
+
+### Referral Metrics
+
+- **Total Referrals** - All referred users
+- **Active Referrals** - Referred users who are active
+- **Credits Earned** - Referral rewards distributed
+- **Conversion Rate** - Signup to active user rate
+
+### Recent Referrals
+
+```typescript
+GET /api/admin/referrals/recent
+```
+
+Returns latest referrals with:
+- Referrer user ID and email
+- Referee user ID and email
+- Referral code used
+- Credit reward amount
+- Timestamp
+
+## Community Analytics
+
+Monitor community content sharing:
+
+```typescript
+GET /api/admin/community/stats
+```
+
+### Community Metrics
+
+- **Shared Sessions** - Sessions shared to community
+- **Shared Media** - Individual media items shared
+- **Total Likes** - Likes on community content
+- **Top Contributors** - Most active community users
+
+## Export and Reporting
+
+### CSV Export
+
+Export comprehensive user analytics:
+
+```typescript
+GET /api/admin/users/export/csv
+```
+
+Includes:
+- User profile information
+- Complete usage statistics
+- Activity summary
+- Last activity timestamp
+
+### Custom Reports
+
+Generate custom reports by combining filters:
+
+```typescript
+// Most active users in last 30 days
+GET /api/admin/usage-analytics?period=30days&sortBy=totalActivity
+
+// Caption generation trends
+GET /api/admin/usage-analytics?feature=smart_captions&groupBy=theme
+```
+
+## Best Practices
+
+### Performance Optimization
+
+1. **Date Range Filtering** - Use specific date ranges for large datasets
+2. **Pagination** - Paginate results for better performance
+3. **Caching** - Analytics are cached for 5 minutes by default
+4. **Indexed Queries** - Ensure database indexes on frequently queried columns
+
+### Data Privacy
+
+1. **Anonymization** - Consider anonymizing data for reports
+2. **Access Control** - Restrict analytics access to admin users only
+3. **Audit Logging** - Log all analytics access for compliance
+4. **Data Retention** - Implement retention policies for old activity logs
+
+## Troubleshooting
+
+### Common Issues
+
+**Analytics Data Missing**
+- Verify `user_usage_stats` table exists
+- Check if tracking middleware is installed
+- Review server logs for tracking errors
+
+**Slow Analytics Queries**
+- Add database indexes on commonly filtered columns
+- Reduce date range for queries
+- Consider pre-aggregating data for dashboards
+
+**Incorrect Activity Counts**
+- Verify tracking functions are called correctly
+- Check for duplicate tracking calls
+- Review activity log entries for anomalies
+
+## API Reference
+
+### Get Platform Analytics
+
+```http
+GET /api/admin/analytics
+```
+
+**Response:**
+```json
+{
+  "totalUsers": 1250,
+  "newUsers": 45,
+  "activeUsers": 320,
+  "totalSessions": 5600,
+  "totalMediaItems": 12000,
+  "revenue": 450000
+}
+```
+
+### Get Usage Analytics
+
+```http
+GET /api/admin/usage-analytics
+```
+
+**Response:**
+```json
+{
+  "users": [
+    {
+      "userId": "user-123",
+      "email": "user@example.com",
+      "sessionsCreated": 25,
+      "smartCaptionsGenerated": 80,
+      "totalActivity": 150
+    }
+  ],
+  "summary": {
+    "totalSessions": 5600,
+    "totalCaptions": 18000,
+    "totalMedia": 12000
+  }
+}
+```
+
+### Get User Usage
+
+```http
+GET /api/admin/users/:userId/usage
+```
+
+**Response:**
+```json
+{
+  "userId": "user-123",
+  "usageStats": { /* detailed stats */ },
+  "recentActivity": [ /* activity logs */ ]
+}
+```

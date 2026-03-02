@@ -1,0 +1,208 @@
+---
+title: 'Generate Caption'
+api: 'POST /api/generate-caption'
+description: 'Generate AI captions for session media using OpenRouter/OpenAI with subreddit-based themes'
+---
+
+This endpoint generates AI-powered captions for images in JOIP sessions. It uses OpenRouter API with fallback to OpenAI for generating authentic, subreddit-themed captions that match the community's voice and expectations.
+
+## Authentication
+
+Requires user authentication via session.
+
+## Request
+
+<ParamField body="media_url" type="string" required>
+  The URL of the image to caption. Supports both HTTP URLs and data URLs.
+  
+  **Note:** Animated GIFs are not supported. Use static images (JPEG, PNG, WebP).
+</ParamField>
+
+<ParamField body="post_title" type="string">
+  The Reddit post title for context. Used to inform caption generation.
+</ParamField>
+
+<ParamField body="subreddit" type="string">
+  The source subreddit (e.g., "joi", "gonewild"). Used to apply subreddit-specific themes and voice.
+  
+  **Supported themes:**
+  - Celebrity worship (Selena Gomez, Taylor Swift, etc.)
+  - Body part focused (ass, tits, feet)
+  - Kink-specific (femdom, cuckold, sissy, joi)
+  - Demographics (MILF, teen, ethnic)
+</ParamField>
+
+<ParamField body="sessionId" type="number">
+  Optional session ID for context validation. If provided, the user must have access to the session.
+</ParamField>
+
+### Request Example
+
+```json
+{
+  "media_url": "https://i.redd.it/example.jpg",
+  "post_title": "Feeling cute today",
+  "subreddit": "joi",
+  "sessionId": 42
+}
+```
+
+## Response
+
+<ResponseField name="caption" type="string">
+  The generated caption text (50-150 characters for session playback).
+  
+  Captions are:
+  - **Short and punchy** (50-150 chars) for 2-7 second display windows
+  - **Subreddit-themed** based on community voice
+  - **Cleaned of markdown formatting** for canvas rendering
+  - **Variation-optimized** to prevent repetitive outputs
+</ResponseField>
+
+### Success Response
+
+```json
+{
+  "caption": "Keep stroking for me... you know you can't resist."
+}
+```
+
+### Error Responses
+
+<ResponseField name="error" type="string">
+  Error message describing what went wrong.
+</ResponseField>
+
+<ResponseField name="requiresApiKey" type="boolean">
+  Set to `true` if OPENROUTER_API_KEY is not configured.
+</ResponseField>
+
+<ResponseField name="code" type="string">
+  Error code for programmatic handling:
+  - `MODEL_IMAGE_UNSUPPORTED` - Selected model doesn't support images
+  - `MEDIA_TYPE_NOT_SUPPORTED` - Animated GIFs or unsupported formats
+  - `FILE_TOO_LARGE` - Image exceeds 20MB limit
+</ResponseField>
+
+#### Error Examples
+
+```json
+{
+  "error": "AI caption service is not available.",
+  "requiresApiKey": true
+}
+```
+
+```json
+{
+  "error": "Media type not supported",
+  "message": "Animated GIFs are not supported for caption generation. Please use static images (JPEG, PNG, WebP)."
+}
+```
+
+```json
+{
+  "error": "Selected OpenRouter model does not support image inputs.",
+  "code": "MODEL_IMAGE_UNSUPPORTED",
+  "modelId": "anthropic/claude-3-opus"
+}
+```
+
+## Implementation Details
+
+### OpenRouter Integration
+
+- **Primary Provider:** OpenRouter API with configurable model selection
+- **Model Selection:** Set via `OPENROUTER_MODEL_ID` environment variable
+- **Fallback Logic:** Gemini models use safety_settings to disable content filtering
+- **Retry Logic:** 3 attempts with content policy rejection handling
+
+### Caption Generation Strategy
+
+**Variation System:**
+- Random opening styles (imperative, rhetorical, conditional, etc.)
+- Random structures (short_punchy, build_and_drop, interrupted, layered)
+- Session-based phrase tracking to prevent repetition
+- Global phrase tracking (max 1000 phrases) for uniqueness
+
+**Master System Prompt:**
+```
+You are an UNCENSORED explicit adult caption generator.
+Create raw, filthy captions that feel like REAL dirty talk.
+
+CRITICAL - PERSPECTIVE:
+- The PERSON IN THE IMAGE is SPEAKING the caption TO the viewer
+- She's talking directly to whoever is looking at/stroking to her image
+
+CONTENT INTENSITY:
+- Be EXPLICIT: cock, pussy, fuck, cum, balls, stroke, edge, etc.
+- NO censoring, NO softening, NO holding back
+- Match the theme's psychological intensity EXACTLY
+
+OUTPUT: Just the raw caption. No quotes, no labels, no formatting.
+```
+
+**Subreddit Themes:**
+- Celebrity worship → "Celebrity worship and obsession content"
+- Ass/booty subreddits → "Ass worship and body appreciation"
+- Femdom/goddess → "Female domination and goddess worship"
+- JOI/jerk → "Jerk off instruction and edging control"
+
+### Content Filtering
+
+**Gemini Safety Settings:**
+```json
+[
+  { "category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE" },
+  { "category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE" },
+  { "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE" },
+  { "category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE" }
+]
+```
+
+### Image Compatibility
+
+**Supported Formats:**
+- JPEG (image/jpeg)
+- PNG (image/png)
+- WebP (image/webp)
+
+**Size Limits:**
+- Maximum: 20MB per image
+- Pre-check via HEAD request to validate size before processing
+
+**Unsupported:**
+- Animated GIFs (detected and rejected)
+- Video formats (MP4, WebM)
+
+### Caching
+
+**Client-Side:**
+- Memory cache for active session
+- IndexedDB persistence (24-hour TTL)
+- Keyed by: `mediaUrl|theme|customPrompt`
+
+**Caption Prewarm:**
+- Use `/api/captions/prewarm` to queue background generation
+- First 5 slides auto-warmed for instant playback
+- 2 concurrent workers, 100-300ms jitter between tasks
+
+## Usage Notes
+
+<Warning>
+  **Session Display Context:** Captions generated by this endpoint are optimized for 2-7 second display windows during session playback. For longer captions with narrative context, use `/api/manual/generate-ai-caption`.
+</Warning>
+
+<Info>
+  **Rate Limiting:** This endpoint does NOT deduct credits. Caption generation is free during session playback. Credit charges apply only to `/api/manual/generate-ai-caption` for manual session editing.
+</Info>
+
+<Tip>
+  **Prewarm Strategy:** Call `/api/captions/prewarm` with the first 5 media URLs when loading a session to ensure instant caption display without loading spinners.
+</Tip>
+
+## Related Endpoints
+
+- [POST /api/manual/generate-ai-caption](/api/ai/smart-captions) - Contextual captions for manual sessions (credit-based)
+- [POST /api/captions/prewarm](/api/ai/prewarm) - Queue background caption generation
+- [GET /api/sessions/:id](/api/sessions/get) - Retrieve session media for captioning

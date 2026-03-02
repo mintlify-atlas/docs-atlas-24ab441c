@@ -1,0 +1,217 @@
+---
+title: 'Admin Panel Overview'
+description: 'Comprehensive administrative dashboard for managing the JOIP platform'
+icon: 'shield-check'
+---
+
+## Introduction
+
+The JOIP Admin Panel provides comprehensive tools for managing users, monitoring platform analytics, and configuring system settings. Access is restricted to users with admin or super_admin roles.
+
+## Accessing the Admin Panel
+
+Admins can access the panel at `/admin/overview`. The interface features a tabbed navigation system with the following sections:
+
+- **Overview** - System health and key metrics
+- **Users** - User management and administration
+- **Credits** - Credit system and pricing management
+- **Referrals** - Referral program monitoring
+- **Community** - Community content moderation
+- **Bulk Import** - Batch JOIP import tools
+- **Beta Censor** - Beta censoring configuration
+- **Tagging** - Content tagging administration
+- **Usage** - Detailed usage analytics
+- **Analytics** - Platform-wide statistics
+- **System** - System settings and configuration
+- **Telegram** - Telegram bot administration
+- **Audit** - Activity audit logs
+
+## Dashboard Metrics
+
+The overview page displays real-time platform statistics:
+
+### User Metrics
+
+<CardGroup cols={2}>
+  <Card title="Total Users" icon="users">
+    Total number of registered users with new user count from the last 30 days
+  </Card>
+  <Card title="Active Users" icon="chart-line">
+    Users who created sessions or performed activities in the last 30 days
+  </Card>
+</CardGroup>
+
+### Platform Metrics
+
+<CardGroup cols={2}>
+  <Card title="Revenue" icon="dollar-sign">
+    Estimated revenue from credit purchases and subscriptions (displayed in USD)
+  </Card>
+  <Card title="Total Sessions" icon="file-text">
+    Number of content sessions created across the platform
+  </Card>
+</CardGroup>
+
+## System Health Monitoring
+
+The admin panel continuously monitors critical system components:
+
+### Service Status
+
+| Service | Monitored Metrics |
+|---------|------------------|
+| **Database** | Connection health, query performance |
+| **Storage** | Supabase configuration, bucket accessibility |
+| **Redis Cache** | Connection status (not actively monitored) |
+
+Health checks run every 60 seconds and display:
+- Service status (Healthy/Degraded/Error)
+- Last database health check timestamp
+- Storage configuration status
+
+<Note>
+The health check endpoint is available at `/api/health/database` and `/api/storage/status` for programmatic monitoring.
+</Note>
+
+## Admin Capabilities
+
+### User Management
+
+- View all users with filtering and search
+- Update user profiles and roles
+- Grant or revoke admin privileges
+- Delete user accounts
+- Export user data to CSV
+
+See [User Management](/admin/user-management) for detailed documentation.
+
+### Usage Analytics
+
+- Track feature usage by user
+- Monitor session creation patterns
+- Analyze caption generation statistics
+- View media upload trends
+- Export analytics reports
+
+See [Analytics & Tracking](/admin/analytics) for detailed metrics.
+
+### System Configuration
+
+- Update application settings
+- Configure OpenRouter AI models
+- Set upload limits and timeouts
+- Enable/disable maintenance mode
+- Configure AI Undress prompts
+
+### Telegram Bot
+
+- Monitor bot health and status
+- Configure bot messages
+- Manage webhook settings
+- Test message delivery
+- View bot command configuration
+
+See [Telegram Bot Administration](/admin/telegram-bot) for complete documentation.
+
+## Security Features
+
+### Role-Based Access Control
+
+The admin panel uses a hierarchical role system:
+
+- **super_admin** - Full system access, cannot be demoted
+- **admin** - Standard administrative access
+- **user** - No admin panel access
+
+<Warning>
+Admins cannot demote themselves or modify system administrator accounts (e.g., `matt@mediaglobe.io`).
+</Warning>
+
+### Audit Logging
+
+All administrative actions are logged with:
+- Admin user ID and email
+- Action type and timestamp
+- Target resource (user, session, etc.)
+- IP address and user agent
+- Detailed action payload
+
+Audit logs are accessible via the **Audit** tab and can be filtered by action type, date range, and admin user.
+
+## API Endpoints
+
+The admin panel uses the following authenticated API endpoints:
+
+```typescript
+// Analytics
+GET /api/admin/analytics
+GET /api/admin/usage-analytics
+GET /api/admin/usage-summary
+
+// User Management
+GET /api/admin/users
+GET /api/admin/users/:id/details
+PATCH /api/admin/users/:id
+PATCH /api/admin/users/:id/role
+DELETE /api/admin/users/:id
+GET /api/admin/users/export/csv
+
+// System Settings
+GET /api/admin/settings
+PATCH /api/admin/settings
+GET /api/admin/openrouter/models
+
+// Audit Logs
+GET /api/admin/audit-logs
+```
+
+<Note>
+All admin endpoints require authentication and the `isAdmin` middleware. Unauthorized access returns a 403 Forbidden response.
+</Note>
+
+## Best Practices
+
+1. **Regular Monitoring** - Check system health daily via the Overview dashboard
+2. **Audit Log Review** - Review audit logs weekly for suspicious activity
+3. **User Cleanup** - Periodically review inactive accounts for cleanup
+4. **Settings Backup** - Document configuration changes before applying
+5. **Role Assignment** - Grant admin access sparingly and only to trusted users
+
+## Troubleshooting
+
+### Common Issues
+
+**Database Health Degraded**
+- Check the database connection string in environment variables
+- Verify the PostgreSQL instance is running and accessible
+- Review recent migrations via `npm run db:push`
+
+**Storage Unconfigured**
+- Ensure Supabase environment variables are set:
+  - `SUPABASE_URL`
+  - `SUPABASE_ANON_KEY`
+  - `SUPABASE_SERVICE_KEY`
+- Verify Supabase project is not paused
+- Check bucket initialization logs
+
+**Access Denied to Admin Panel**
+- Verify user role is set to `admin` or `super_admin`
+- Check authentication session is valid
+- Review browser console for authentication errors
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="User Management" icon="users" href="/admin/user-management">
+    Learn how to manage users, roles, and permissions
+  </Card>
+  <Card title="Analytics" icon="chart-bar" href="/admin/analytics">
+    Explore detailed usage analytics and tracking
+  </Card>
+  <Card title="Telegram Bot" icon="message" href="/admin/telegram-bot">
+    Configure and manage the Telegram bot integration
+  </Card>
+  <Card title="System Settings" icon="gear" href="/admin/system-settings">
+    Configure application settings and AI models
+  </Card>
+</CardGroup>

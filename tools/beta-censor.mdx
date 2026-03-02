@@ -1,0 +1,608 @@
+---
+title: Beta Censor
+description: AI-powered content censoring tool with customizable presets and effects
+---
+
+## Overview
+
+Beta Censor (also called Censor Studio) is an advanced AI-powered image censoring tool that automatically detects and censors body parts using machine learning. Choose from preset censoring styles or create custom configurations with fine-grained control.
+
+<Note>
+Beta Censor uses the BetaCensor API (NudeNet v3 model) via SignalR WebSocket connection for real-time processing.
+</Note>
+
+## Getting Started
+
+<Steps>
+  <Step title="Upload an Image">
+    Choose your source image:
+    - Upload from computer (JPEG, PNG, WebP up to 20MB)
+    - Fetch random image from Reddit subreddits
+    - Transfer from JOIP tools (Media Vault, Smart Captions, etc.)
+  </Step>
+  
+  <Step title="Choose Censoring Style">
+    Select a preset (Blur, Pixelate, Black Bars, Stickers, Captions) or use Custom mode for full control.
+  </Step>
+  
+  <Step title="Generate">
+    Click "Censor Image" and wait for AI processing (typically 5-30 seconds).
+  </Step>
+  
+  <Step title="Optional: Add Effects">
+    Apply the "Ruin Image" effect for additional obfuscation if desired.
+  </Step>
+  
+  <Step title="Save or Download">
+    Save to Media Vault (with optional community sharing) or download directly.
+  </Step>
+</Steps>
+
+## Censoring Presets
+
+### Blur
+
+- **Effect**: Gaussian blur over detected regions
+- **Intensity**: 8 (default, reduced from 10 for subtler effect)
+- **Best For**: Soft censoring, maintaining image aesthetics
+- **Targets**: All exposed and covered intimate areas, faces
+
+### Pixelate
+
+- **Effect**: Mosaic pixelation over detected regions
+- **Intensity**: 8 (default)
+- **Best For**: Classic censoring look, clear indication of censored content
+- **Targets**: All exposed and covered intimate areas, faces
+
+### Black Bars
+
+- **Effect**: Solid black rectangular overlays
+- **Intensity**: 8 (default)
+- **Best For**: Complete obscuring, traditional censoring
+- **Targets**: All exposed and covered intimate areas, faces
+
+### Stickers
+
+- **Effect**: Sticker overlays placed over detected regions
+- **Intensity**: 5 (lower blur under stickers for subtler base effect)
+- **Best For**: Playful censoring, creative expression
+- **Targets**: All exposed and covered intimate areas, faces
+- **Options**: Use default sticker pack or upload custom stickers
+
+### Captions
+
+- **Effect**: Text overlays with censoring messages
+- **Intensity**: 8 (blur under captions)
+- **Best For**: Humiliation themes, interactive censoring
+- **Targets**: All exposed and covered intimate areas, faces
+- **Options**: Use default captions or create custom caption sets
+
+### Custom
+
+- **Effect**: User-defined per body part
+- **Intensity**: Adjustable 1-20 per body part
+- **Best For**: Fine-grained control, specific use cases
+- **Targets**: Select individual body parts to censor
+
+<Note>
+All presets use intensity level 8 (reduced from previous default of 10) for a 25% less intense effect. This provides better balance between censoring and image quality.
+</Note>
+
+## Image Sources
+
+### Upload from Computer
+
+<AccordionGroup>
+  <Accordion title="Drag and Drop">
+    1. Drag an image file onto the upload area
+    2. File is validated for format and size
+    3. Preview appears immediately
+    
+    Supported formats: JPEG, PNG, WebP (max 20MB)
+  </Accordion>
+  
+  <Accordion title="Click to Browse">
+    1. Click the upload area
+    2. Select file from your computer
+    3. Image loads into preview
+    
+    <Note>
+    Only static images are supported. GIF files are blocked with a clear error message.
+    </Note>
+  </Accordion>
+  
+  <Accordion title="Paste from Clipboard">
+    1. Copy an image to clipboard
+    2. Click the upload area
+    3. Image automatically pastes and loads
+    
+    Great for quick testing with screenshots or copied images.
+  </Accordion>
+</AccordionGroup>
+
+### Reddit Source
+
+Fetch random images from Reddit:
+
+1. Add one or more subreddits (comma-separated)
+2. Click "Fetch from Reddit"
+3. Random image from your subreddit list appears
+4. Click again to get a different image
+
+<Note>
+Reddit fetching uses deduplication to avoid showing the same image twice. Up to 100 previously shown URLs are excluded from new fetches.
+</Note>
+
+### JOIP Transfer
+
+Receive images from other JOIP tools:
+
+- Click "Send to Censor Studio" in Media Vault, Smart Captions, or Babecock Studio
+- Image automatically loads and ready to censor
+- Original metadata (filename, MIME type) preserved
+
+<Warning>
+Only static images can be transferred. Video or GIF transfers will show an error.
+</Warning>
+
+## Custom Mode
+
+### Body Part Selection
+
+In Custom mode, individually select which body parts to censor:
+
+#### Covered Regions
+- Belly (Covered)
+- Breasts (Covered)
+- Buttocks (Covered)
+- Feet (Covered)
+- Genitalia F (Covered)
+
+#### Exposed Regions
+- Anus
+- Armpits
+- Belly
+- Breasts (Female)
+- Breasts (Male)
+- Buttocks
+- Feet
+- Genitalia (Female)
+- Genitalia (Male)
+
+#### Faces and Features
+- Face (Female)
+- Face (Male)
+- Eyes (Female)
+- Mouth (Female)
+
+<Note>
+The AI model detects these body parts automatically. You choose which detected parts to censor and how to censor them.
+</Note>
+
+### Per-Part Configuration
+
+For each selected body part:
+
+1. **Choose Censor Type**:
+   - Blur
+   - Pixelate
+   - Black Bars
+   - Sticker
+   - Caption
+
+2. **Set Intensity Level** (1-20):
+   - Lower values: Subtle censoring
+   - Higher values: Stronger censoring
+   - Default: 8
+
+3. **Example**: Blur faces at intensity 5, pixelate genitalia at intensity 15
+
+## Sticker Management
+
+### Default Sticker Pack
+
+Includes basic censoring stickers built into the app.
+
+### Creating Custom Sticker Packs
+
+<Steps>
+  <Step title="Create Pack">
+    1. Click "Manage Stickers"
+    2. Enter a pack name
+    3. Click "Create New Pack"
+  </Step>
+  
+  <Step title="Upload Stickers">
+    1. Select your new pack
+    2. Click "Add Stickers"
+    3. Choose JPEG, PNG, WebP, or GIF files
+    4. Multiple files can be uploaded at once
+  </Step>
+  
+  <Step title="Review and Organize">
+    - View all stickers in the pack
+    - Delete individual stickers if needed
+    - Pack is ready to use
+  </Step>
+</Steps>
+
+### Using Custom Stickers
+
+1. In Stickers preset or Custom mode with sticker type:
+2. Select your custom pack from the dropdown
+3. Stickers from that pack will be randomly applied to detected regions
+
+<Note>
+**Sticker Variations**: Stickers are randomly rotated (-15° to +15°) and sized (±20%) for a more natural, varied appearance.
+</Note>
+
+### Syncing Stickers
+
+Click "Sync to Server" to:
+
+- Upload all your custom stickers to the BetaCensor service
+- Make them available for server-side processing
+- Sync status shows how many stickers were uploaded
+
+## Caption Management
+
+### Default Captions
+
+Built-in generic censoring captions:
+- "Censored"
+- "No peeking"
+- "Not for you"
+- "Look away"
+- "Access denied"
+- "Denied"
+
+### Preset Caption Packs
+
+Themed caption collections:
+
+- **JOI / Edging**: Commanding instructions for edging and denial
+- **Forced-Bi**: Coercion and sexuality exploration themes
+- **Beta / Bully**: Power imbalance and humiliation dynamics
+- **CBT / Pain**: Intense pain play scenarios
+- **Cuckold**: Humiliation and voyeurism themes
+
+<Warning>
+**Content Warning**: Preset caption packs contain explicit NSFW content aligned with specific adult themes. Review pack descriptions before using.
+</Warning>
+
+### Creating Custom Caption Sets
+
+<Steps>
+  <Step title="Create Set">
+    1. Click "Manage Captions"
+    2. Enter a set name
+    3. Click "Create New Set"
+  </Step>
+  
+  <Step title="Add Captions">
+    1. Enter captions in the text area
+    2. One caption per line
+    3. Can include multiple variations
+  </Step>
+  
+  <Step title="Save and Use">
+    - Click "Save" to store the set
+    - Select it from the captions dropdown
+    - Captions are randomly chosen from your set
+  </Step>
+</Steps>
+
+### Editing Caption Sets
+
+1. Click "Manage Captions"
+2. Find the set you want to edit
+3. Click the edit icon
+4. Modify captions as needed
+5. Save changes
+
+## Advanced Options
+
+### Intensity Slider
+
+Controls the strength of censoring effects:
+
+- **Range**: 1-20
+- **Default**: 8 (reduced from 10)
+- **Low (1-5)**: Subtle, barely noticeable censoring
+- **Medium (6-12)**: Balanced censoring
+- **High (13-20)**: Strong, heavy censoring
+
+<Note>
+Intensity applies globally in preset modes, or per-body-part in Custom mode.
+</Note>
+
+### Image Obfuscation ("Ruin Image")
+
+Apply additional degradation effects after censoring:
+
+- **Desaturation**: 45% - washed-out look
+- **Brightness**: 15% darker
+- **Sharpening**: Aggressive for harsh, over-processed appearance
+- **Gamma**: Crushed shadows, lifted highlights
+- **Compression**: JPEG artifacts add to "ruined" aesthetic
+
+<Steps>
+  <Step title="Censor First">
+    Generate censored image using your chosen preset/settings.
+  </Step>
+  
+  <Step title="Toggle Obfuscation">
+    Enable the "Ruin Image" checkbox.
+  </Step>
+  
+  <Step title="Apply Effect">
+    Click "Ruin Image" to apply degradation effects.
+  </Step>
+</Steps>
+
+<Note>
+Obfuscation is applied locally using Sharp image processing, not via the external BetaCensor API.
+</Note>
+
+## Processing and Results
+
+### AI Detection Process
+
+<Steps>
+  <Step title="Image Analysis">
+    BetaCensor API analyzes your image using the NudeNet v3 model to detect body parts.
+  </Step>
+  
+  <Step title="Region Mapping">
+    Detected regions are mapped to bounding boxes with confidence scores.
+  </Step>
+  
+  <Step title="Censoring Application">
+    Based on your settings, appropriate censoring effects are applied to detected regions.
+  </Step>
+  
+  <Step title="Local Overlays (if applicable)">
+    Stickers and captions are applied client-side after receiving the censored image from the API.
+  </Step>
+</Steps>
+
+### Detection Results
+
+After processing:
+
+- **Success Message**: "Applied censoring to X detected region(s)"
+- **No Detections**: "No content detected - The AI model didn't detect any body parts to censor"
+- **Error**: Specific error message explaining the failure
+
+<Note>
+If no body parts are detected, the original image is returned unchanged. This can happen with:
+- Images without detectable body parts
+- Very small or distant subjects
+- Heavily obscured or covered subjects
+</Note>
+
+### View Modes
+
+- **After**: View the censored result (default)
+- **Before**: View the original uploaded image
+- Toggle between views to compare changes
+
+## Saving and Sharing
+
+### Save to Media Vault
+
+1. Click "Save to Vault" after successful censoring
+2. Optionally enable "Share to Community" toggle
+3. Image is saved to your personal Media Vault
+4. Shared images appear in the community feed
+
+### Download to Computer
+
+1. Click "Download" button
+2. Image downloads with format-appropriate extension (jpg/png/webp)
+3. Filename format: `censored-[timestamp].[extension]`
+
+<Note>
+Downloaded images are watermarked for attribution. Saved vault images also include the watermark.
+</Note>
+
+## History
+
+All censoring operations are tracked in local history:
+
+- View recent censoring sessions
+- Click to reload previous settings
+- Review original and censored images
+- See which preset/settings were used
+
+<Note>
+History is stored in browser localStorage and persists across sessions.
+</Note>
+
+## Credit System
+
+Beta Censor uses credits for processing:
+
+- **Cost**: 5 credits per censoring operation (default, configurable)
+- **Credit Check**: Performed before processing
+- **Insufficient Credits**: Dialog appears with link to purchase
+
+<Warning>
+Credits are deducted immediately when censoring begins. Failed operations are not automatically refunded.
+</Warning>
+
+## Service Status
+
+The app monitors BetaCensor service availability:
+
+- **Green Indicator**: Service is available
+- **Red Indicator**: Service is down
+- **Auto-retry**: Service status checked periodically (every 15-60 seconds)
+
+<Note>
+If the service is unavailable, you'll see: "Censor service is not running. Please try again in a moment."
+</Note>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Service Unavailable">
+    **Error**: "Censor service is temporarily unavailable"
+    
+    **Causes**:
+    - BetaCensor API is down
+    - SignalR connection failed
+    - Server is restarting
+    
+    **Solutions**:
+    - Wait 10-30 seconds for automatic reconnection
+    - Refresh the page
+    - Check status indicator
+    - Try again in a few minutes
+  </Accordion>
+  
+  <Accordion title="No Content Detected">
+    **Message**: "The AI model didn't detect any body parts to censor"
+    
+    **Causes**:
+    - Image doesn't contain detectable body parts
+    - Subject is too small or distant
+    - Clothing/coverage prevents detection
+    
+    **Solutions**:
+    - Try a different image
+    - Use an image with clearer subjects
+    - Ensure adequate resolution and lighting
+  </Accordion>
+  
+  <Accordion title="Processing Timeout">
+    **Error**: "Request timed out after 60000ms"
+    
+    **Causes**:
+    - Very large/complex image
+    - Server overload
+    - Network issues
+    
+    **Solutions**:
+    - Resize image to smaller dimensions
+    - Try again during off-peak hours
+    - Check internet connection
+    - Use a simpler image
+  </Accordion>
+  
+  <Accordion title="Upload Failed">
+    **Error**: Various upload-related errors
+    
+    **Causes**:
+    - File too large (>20MB)
+    - Unsupported format (GIF)
+    - Corrupted file
+    
+    **Solutions**:
+    - Compress or resize image
+    - Convert to JPEG, PNG, or WebP
+    - Try a different file
+    - Verify file integrity
+  </Accordion>
+  
+  <Accordion title="Stickers Not Appearing">
+    **Cause**: Sticker pack not synced or empty
+    
+    **Solutions**:
+    - Click "Sync to Server" in sticker manager
+    - Upload at least one sticker to the pack
+    - Switch to default sticker pack
+    - Verify stickers are valid image files
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Start with Presets">
+    Use built-in presets (Blur, Pixelate, etc.) to quickly find the censoring style you prefer. Switch to Custom mode only when you need fine-grained control.
+  </Accordion>
+  
+  <Accordion title="Adjust Intensity Gradually">
+    Start at default intensity (8) and adjust up or down based on results. Small changes (±2) often make a big visual difference.
+  </Accordion>
+  
+  <Accordion title="Use High-Quality Source Images">
+    Better source images produce better censoring results. Aim for:
+    - Good lighting and clarity
+    - Adequate resolution (1024px+)
+    - Clear subject visibility
+  </Accordion>
+  
+  <Accordion title="Organize Custom Content">
+    Create separate sticker packs and caption sets for different themes or projects. This keeps your library organized and easy to use.
+  </Accordion>
+  
+  <Accordion title="Test Before Saving">
+    Use the Before/After toggle to review results before saving or downloading. Regenerate if needed with different settings.
+  </Accordion>
+  
+  <Accordion title="Leverage Reddit Source for Testing">
+    The Reddit fetch feature is great for testing different settings without uploading your own images. Perfect for experimenting with presets and configurations.
+  </Accordion>
+</AccordionGroup>
+
+## Technical Details
+
+### AI Model
+
+- **Provider**: BetaCensor API
+- **Model**: NudeNet v3
+- **Detection Classes**: 22 body part categories
+- **Confidence Thresholds**: Configured server-side
+- **Processing**: Real-time via SignalR WebSocket
+
+### Communication Protocol
+
+- **Protocol**: SignalR with WebSocket transport
+- **Endpoint**: Configurable via `BETACENSOR_API_URL`
+- **Connection**: Automatic reconnect with backoff (0s, 2s, 5s, 10s, 30s)
+- **Timeout**: 60 seconds per request
+- **Keep-Alive**: 10 second interval
+
+### Local Processing
+
+- **Stickers**: Applied client-side using Sharp compositing
+- **Captions**: Rendered as SVG and composited locally
+- **Obfuscation**: Sharp-based image effects (no API call)
+- **Watermarking**: Applied during download/save operations
+
+### Storage
+
+- **Saved Images**: Uploaded to Supabase `user-media` bucket
+- **Community Sharing**: Creates copy in `general` bucket when enabled
+- **Path Format**: `users/{userId}/beta-censor/{timestamp}_{random}.{ext}`
+
+## Privacy and Content Policy
+
+### Data Handling
+
+- Images are sent to the external BetaCensor API for processing
+- Results are stored in your account if saved
+- Shared images appear in community feed only if you enable sharing
+- History data stored locally in browser
+
+### Acceptable Use
+
+<Warning>
+**Important**: Only use images you have full legal rights to. Do not upload:
+- Images of minors or individuals without consent
+- Copyrighted content you don't own
+- Illegal or prohibited content
+
+Violations may result in account suspension.
+</Warning>
+
+### Community Sharing
+
+When sharing to community:
+
+- Image becomes visible to all users
+- Cannot be un-shared (removal requires manual intervention)
+- Subject to community guidelines and moderation
+- Your username is associated with shared content

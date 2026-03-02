@@ -1,0 +1,487 @@
+---
+title: 'Rate Limiting'
+description: 'API rate limiting policies and implementation'
+---
+
+## Overview
+
+The JOIP API implements rate limiting using a **token bucket algorithm** to protect against abuse and ensure fair resource allocation.
+
+## Rate Limiting Algorithm
+
+### Token Bucket Implementation
+
+The API uses an in-memory token bucket system:
+
+```javascript
+// From server/rateLimiter.ts:17-20
+interface TokenBucket {
+  tokens: number;        // Available tokens
+  lastRefill: number;    // Timestamp of last refill
+}
+```
+
+**How it works**:
+1. Each user/IP starts with a full bucket of tokens
+2. Each request consumes one token
+3. Tokens refill gradually over time
+4. When tokens reach zero, requests are rejected with 429
+
+### Token Refill Logic
+
+```javascript
+// From server/rateLimiter.ts:69-78
+const timePassed = now - bucket.lastRefill;
+const tokensToAdd = Math.floor(
+  timePassed / config.windowMs * config.maxRequests
+);
+
+if (tokensToAdd > 0) {
+  bucket.tokens = Math.min(
+    config.maxRequests,
+    bucket.tokens + tokensToAdd
+  );
+  bucket.lastRefill = now;
+}
+```
+
+## Rate Limit Policies
+
+### Public API Endpoints
+
+**Limit**: 100 requests per 15 minutes per IP
+
+```javascript
+// From server/rateLimiter.ts:140-146
+export function createPublicApiLimiter() {
+  return new RateLimiter({
+    windowMs: 15 * 60 * 1000,  // 15 minutes
+    maxRequests: 100,
+    message: 'Too many requests from this IP, please try again later.',
+  });
+}
+```
+
+**Applied to**:
+- `/api/sessions/*`
+- `/api/media/*`
+- `/api/community/*`
+- Most authenticated endpoints
+
+### Reddit API Proxy
+
+**Limit**: 30 requests per 5 minutes per IP
+
+```javascript
+// From server/rateLimiter.ts:153-160
+export function createRedditApiLimiter() {
+  return new RateLimiter({
+    windowMs: 5 * 60 * 1000,   // 5 minutes
+    maxRequests: 30,
+    message: 'Rate limit exceeded. Please wait a few minutes before trying again.',
+    skipFailedRequests: true,  // Don't count failed requests
+  });
+}
+```
+
+**Applied to**:
+- `/api/fetch-reddit`
+- Reddit content fetching endpoints
+
+**Why more restrictive?** Protects against hitting Reddit's API rate limits.
+
+### Authentication Endpoints
+
+**Limit**: 5 attempts per 15 minutes per IP
+
+```javascript
+// From server/rateLimiter.ts:166-173
+export function createAuthLimiter() {
+  return new RateLimiter({
+    windowMs: 15 * 60 * 1000,  // 15 minutes
+    maxRequests: 5,
+    message: 'Too many authentication attempts. Please try again later.',
+    skipSuccessfulRequests: true,  // Only count failed attempts
+  });
+}
+```
+
+**Applied to**:
+- `/api/login`
+- Authentication-related endpoints
+
+**Special behavior**: Only failed login attempts count toward the limit.
+
+### Import Operations
+
+**Limit**: 5 imports per 15 minutes per user
+
+```javascript
+// From server/rateLimiter.ts:185-200
+export function createImportLimiter() {
+  return new RateLimiter({
+    windowMs: 15 * 60 * 1000,  // 15 minutes
+    maxRequests: 5,
+    message: 'Too many import requests. Please wait before importing more content.',
+    keyGenerator: (req: Request) => {
+      const userId = req.user?.claims?.sub || req.user?.id;
+      if (!userId) {
+        throw new Error('User ID not found for rate limiting');
+      }
+      return userId;
+    },
+  });
+}
+```
+
+**Applied to**:
+- `/api/sessions/import-joip`
+- Import-related endpoints
+
+**Key difference**: Limited by user ID instead of IP address.
+
+### Payment Endpoints
+
+#### Payment Callbacks
+
+**Limit**: 60 requests per minute per IP
+
+```javascript
+// From server/rateLimiter.ts:206-212
+export function createPaymentCallbackLimiter() {
+  return new RateLimiter({
+    windowMs: 60 * 1000,  // 1 minute
+    maxRequests: 60,
+    message: 'Too many payment callback requests.',
+  });
+}
+```
+
+**Why generous?** Handles payment gateway retries and webhooks.
+
+#### Payment Creation
+
+**Limit**: 10 requests per 15 minutes per user
+
+```javascript
+// From server/rateLimiter.ts:218-231
+export function createPaymentCreateLimiter() {
+  return new RateLimiter({
+    windowMs: 15 * 60 * 1000,  // 15 minutes
+    maxRequests: 10,
+    message: 'Too many payment requests. Please wait before trying again.',
+    keyGenerator: (req: Request) => {
+      const userId = req.user?.claims?.sub || req.user?.id;
+      if (!userId) {
+        throw new Error('User ID not found for rate limiting');
+      }
+      return userId;
+    },
+  });
+}
+```
+
+### Telegram Webhooks
+
+**Limit**: 100 requests per minute per IP
+
+```javascript
+// From server/rateLimiter.ts:237-243
+export function createTelegramWebhookLimiter() {
+  return new RateLimiter({
+    windowMs: 60 * 1000,  // 1 minute
+    maxRequests: 100,
+    message: 'Too many webhook requests.',
+  });
+}
+```
+
+## Rate Limit Headers
+
+Every API response includes rate limit information:
+
+```javascript
+// From server/rateLimiter.ts:102-104
+res.setHeader('X-RateLimit-Limit', config.maxRequests.toString());
+res.setHeader('X-RateLimit-Remaining', Math.max(0, bucket.tokens).toString());
+res.setHeader('X-RateLimit-Reset', new Date(bucket.lastRefill + config.windowMs).toISOString());
+```
+
+### Example Response Headers
+
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 2026-03-02T11:00:00.000Z
+```
+
+| Header | Description |
+|--------|-------------|
+| `X-RateLimit-Limit` | Maximum requests allowed in window |
+| `X-RateLimit-Remaining` | Remaining requests in current window |
+| `X-RateLimit-Reset` | ISO timestamp when limit resets |
+
+## Rate Limit Exceeded Response
+
+When rate limit is exceeded, you'll receive:
+
+**Status Code**: `429 Too Many Requests`
+
+**Response Body**:
+```json
+{
+  "error": "Too Many Requests",
+  "message": "Rate limit exceeded. Please try again later.",
+  "retryAfter": 900
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `error` | Error type |
+| `message` | Human-readable error message |
+| `retryAfter` | Seconds until rate limit resets |
+
+### Example Response
+
+```bash
+curl -i http://localhost:5000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"wrong"}'
+
+# After 5 failed attempts:
+HTTP/1.1 429 Too Many Requests
+X-RateLimit-Limit: 5
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 2026-03-02T11:15:00.000Z
+
+{
+  "error": "Too Many Requests",
+  "message": "Too many authentication attempts. Please try again later.",
+  "retryAfter": 900
+}
+```
+
+## Key Generation
+
+Rate limits are applied per key. The key can be based on:
+
+### IP Address (Default)
+
+```javascript
+// From server/rateLimiter.ts:50-56
+const forwarded = req.headers['x-forwarded-for'];
+const ip = forwarded 
+  ? (typeof forwarded === 'string' ? forwarded.split(',')[0] : forwarded[0])
+  : req.ip || req.connection.remoteAddress || 'unknown';
+
+return ip;
+```
+
+Handles proxied requests by reading `X-Forwarded-For` header.
+
+### User ID (Authenticated Endpoints)
+
+```javascript
+// From server/rateLimiter.ts:190-197
+keyGenerator: (req: Request) => {
+  const userId = req.user?.claims?.sub || req.user?.id;
+  if (!userId) {
+    throw new Error('User ID not found for rate limiting');
+  }
+  return userId;
+}
+```
+
+Used for user-specific limits like imports and payments.
+
+## Special Behaviors
+
+### Skip Successful Requests
+
+Some limiters don't count successful requests:
+
+```javascript
+// From server/rateLimiter.ts:171
+skipSuccessfulRequests: true  // Only count failed attempts
+```
+
+**Example**: Authentication endpoint only counts failed login attempts.
+
+### Skip Failed Requests
+
+Some limiters don't count failed requests:
+
+```javascript
+// From server/rateLimiter.ts:158
+skipFailedRequests: true  // Don't count failed requests
+```
+
+**Example**: Reddit API limiter doesn't penalize for Reddit's errors.
+
+### Token Refund Logic
+
+```javascript
+// From server/rateLimiter.ts:107-121
+if (config.skipSuccessfulRequests || config.skipFailedRequests) {
+  const originalSend = res.send;
+  res.send = function(data: any) {
+    const statusCode = res.statusCode;
+    
+    // Refund token based on response status
+    if ((config.skipSuccessfulRequests && statusCode < 400) ||
+        (config.skipFailedRequests && statusCode >= 400)) {
+      bucket.tokens = Math.min(config.maxRequests, bucket.tokens + 1);
+    }
+    
+    return originalSend.call(res, data);
+  };
+}
+```
+
+## Memory Management
+
+### Automatic Cleanup
+
+Old buckets are cleaned up every minute:
+
+```javascript
+// From server/rateLimiter.ts:26-28
+this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
+
+// From server/rateLimiter.ts:31-43
+private cleanup() {
+  const now = Date.now();
+  const windowMs = this.config.windowMs;
+  
+  const keysToDelete: string[] = [];
+  this.buckets.forEach((bucket, key) => {
+    if (now - bucket.lastRefill > windowMs * 2) {
+      keysToDelete.push(key);
+    }
+  });
+  
+  keysToDelete.forEach(key => this.buckets.delete(key));
+}
+```
+
+**Cleanup policy**: Delete buckets inactive for 2x the window duration.
+
+## Best Practices
+
+### 1. Monitor Rate Limit Headers
+
+Always check response headers to track your usage:
+
+```javascript
+const response = await fetch('/api/sessions');
+const limit = response.headers.get('X-RateLimit-Limit');
+const remaining = response.headers.get('X-RateLimit-Remaining');
+const reset = response.headers.get('X-RateLimit-Reset');
+
+if (parseInt(remaining) < 10) {
+  console.warn('Approaching rate limit!');
+}
+```
+
+### 2. Implement Exponential Backoff
+
+```javascript
+async function fetchWithBackoff(url, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    const response = await fetch(url);
+    
+    if (response.status !== 429) {
+      return response;
+    }
+    
+    const retryAfter = parseInt(response.headers.get('X-RateLimit-Reset'));
+    const delay = Math.min(1000 * Math.pow(2, i), retryAfter * 1000);
+    
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
+  
+  throw new Error('Max retries exceeded');
+}
+```
+
+### 3. Batch Requests
+
+Reduce API calls by batching when possible:
+
+```javascript
+// Instead of multiple calls:
+await Promise.all(ids.map(id => fetch(`/api/media/${id}`)));
+
+// Use bulk endpoints:
+await fetch('/api/media/bulk', {
+  method: 'POST',
+  body: JSON.stringify({ ids })
+});
+```
+
+### 4. Cache Responses
+
+Cache API responses to reduce redundant requests:
+
+```javascript
+const cache = new Map();
+
+async function getCachedSession(id) {
+  if (cache.has(id)) {
+    return cache.get(id);
+  }
+  
+  const response = await fetch(`/api/sessions/${id}`);
+  const data = await response.json();
+  
+  cache.set(id, data);
+  setTimeout(() => cache.delete(id), 60000); // 1 minute TTL
+  
+  return data;
+}
+```
+
+## Rate Limit Summary Table
+
+| Endpoint Type | Limit | Window | Key | Special Behavior |
+|---------------|-------|--------|-----|------------------|
+| Public API | 100 requests | 15 minutes | IP | - |
+| Reddit Proxy | 30 requests | 5 minutes | IP | Skip failed requests |
+| Authentication | 5 attempts | 15 minutes | IP | Skip successful requests |
+| Import | 5 imports | 15 minutes | User ID | - |
+| Payment Callbacks | 60 requests | 1 minute | IP | - |
+| Payment Creation | 10 requests | 15 minutes | User ID | - |
+| Telegram Webhooks | 100 requests | 1 minute | IP | - |
+
+## Common Issues
+
+### Rate Limit Exceeded on Login
+
+**Problem**: Can't login after multiple failed attempts
+
+**Solution**: Wait 15 minutes or use different test account
+
+### Rate Limit with VPN/Proxy
+
+**Problem**: Shared IP hits rate limits quickly
+
+**Solution**: 
+- Use authenticated endpoints (rate limited by user ID)
+- Disable VPN for development
+- Contact support for IP allowlist
+
+### Rate Limit in Development
+
+**Problem**: Hitting limits during local testing
+
+**Solution**:
+- Use different test accounts to get separate limits
+- Restart server to clear in-memory buckets
+- Implement request caching
+
+## Next Steps
+
+- [Error Handling](/api/errors) - Handle rate limit errors properly
+- [Authentication](/api/authentication) - User-based rate limiting
+- [API Introduction](/api/introduction) - Overview of all endpoints

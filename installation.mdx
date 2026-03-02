@@ -1,0 +1,714 @@
+---
+title: 'Installation'
+description: 'Complete installation guide for JOIP - local development and production deployment'
+---
+
+## System Requirements
+
+<CardGroup cols={2}>
+  <Card title="Runtime" icon="server">
+    - **Node.js**: 18+ (LTS recommended)
+    - **npm**: Latest version
+    - **PostgreSQL**: 13+ or compatible cloud service
+  </Card>
+
+  <Card title="Development" icon="code">
+    - **Git**: For version control
+    - **Code Editor**: VSCode, Cursor, or similar
+    - **Terminal**: Bash, Zsh, or PowerShell
+  </Card>
+</CardGroup>
+
+## Installation Methods
+
+<Tabs>
+  <Tab title="Local Development">
+    ### Local Development Setup
+
+    Perfect for development on your local machine with full control over all components.
+
+    <Steps>
+      <Step title="Clone Repository">
+        ```bash
+        git clone <your-repo-url>
+        cd <your-repo-name>
+        ```
+      </Step>
+
+      <Step title="Install Dependencies">
+        ```bash
+        npm install
+        ```
+
+        This installs all required packages:
+        - **React 18** with TypeScript
+        - **Express.js** with TypeScript
+        - **Drizzle ORM** for database operations
+        - **Tailwind CSS** + **Radix UI** for styling
+        - **TanStack React Query** for state management
+        - **Sharp** for image processing
+        - And 100+ other dependencies
+
+        <Note>
+          Installation may take 2-5 minutes depending on your connection speed.
+        </Note>
+      </Step>
+
+      <Step title="Database Setup">
+        Choose one of these PostgreSQL options:
+
+        <AccordionGroup>
+          <Accordion title="Option A: Local PostgreSQL" icon="database">
+            Install PostgreSQL on your machine:
+
+            ```bash
+            # macOS (via Homebrew)
+            brew install postgresql@15
+            brew services start postgresql@15
+
+            # Ubuntu/Debian
+            sudo apt-get install postgresql-15
+            sudo systemctl start postgresql
+
+            # Create database
+            createdb joip_dev
+            ```
+
+            Set your `DATABASE_URL`:
+            ```bash
+            DATABASE_URL="postgresql://postgres:password@localhost:5432/joip_dev"
+            ```
+          </Accordion>
+
+          <Accordion title="Option B: Supabase (Recommended)" icon="cloud">
+            Free cloud PostgreSQL with storage included:
+
+            1. Sign up at [https://supabase.com](https://supabase.com)
+            2. Create a new project
+            3. Go to **Settings → Database**
+            4. Copy the connection string (URI format)
+            5. Paste into `.env` as `DATABASE_URL`
+
+            <Tip>
+              Supabase provides both database AND storage, making it the recommended option.
+            </Tip>
+          </Accordion>
+
+          <Accordion title="Option C: Neon" icon="bolt">
+            Serverless PostgreSQL with generous free tier:
+
+            1. Sign up at [https://neon.tech](https://neon.tech)
+            2. Create a new project
+            3. Copy the connection string
+            4. Add to `.env` as `DATABASE_URL`
+
+            <Note>
+              Neon is optimized for serverless deployments and has excellent cold start performance.
+            </Note>
+          </Accordion>
+        </AccordionGroup>
+      </Step>
+
+      <Step title="Environment Configuration">
+        Copy the example environment file:
+
+        ```bash
+        cp .env.example .env
+        ```
+
+        Edit `.env` with required values:
+
+        ```bash
+        # Database (required)
+        DATABASE_URL="postgresql://username:password@host:5432/database"
+
+        # Session Security (required)
+        SESSION_SECRET="generated-with-openssl-rand-hex-32"
+
+        # Application Settings
+        NODE_ENV="development"
+        PORT=5000
+        ```
+
+        Generate a secure session secret:
+        ```bash
+        openssl rand -hex 32
+        ```
+      </Step>
+
+      <Step title="Apply Database Migrations">
+        Create all required database tables:
+
+        ```bash
+        npm run db:push
+        ```
+
+        This creates:
+        - **users** - User profiles and authentication
+        - **content_sessions** - Session configurations
+        - **session_media** - Media items within sessions
+        - **user_media** - Personal media vault
+        - **shared_sessions** - Public sharing codes
+        - **community_sessions** - Community feed snapshots
+        - **user_usage_stats** - Analytics and tracking
+        - And 10+ more tables with comprehensive constraints
+
+        <Note>
+          The schema includes **36 total constraints** including foreign keys, unique constraints, and indexes for data integrity.
+        </Note>
+      </Step>
+
+      <Step title="Start Development Server">
+        ```bash
+        npm run dev
+        ```
+
+        The server will start on **http://localhost:5000** with:
+        - **Vite HMR** on port 5173 (auto-proxied)
+        - **API routes** under `/api`
+        - **Client application** served at root
+
+        <Tip>
+          The development server includes hot module replacement (HMR) for instant updates during development.
+        </Tip>
+      </Step>
+    </Steps>
+
+    ### Verify Installation
+
+    <Accordion title="Check Server Logs">
+      You should see output like:
+      ```
+      ✓ Database connected successfully
+      ✓ Connection pool initialized
+      ✓ Vite dev server started
+      ✓ Server listening on port 5000
+      ```
+    </Accordion>
+
+    <Accordion title="Test Database Connection">
+      Visit `http://localhost:5000` and try logging in. The local auth strategy allows any credentials in development.
+    </Accordion>
+
+  </Tab>
+
+  <Tab title="Replit Production">
+    ### Replit Deployment
+
+    JOIP is designed for seamless deployment on Replit with production-ready configuration.
+
+    <Steps>
+      <Step title="Import to Replit">
+        1. Go to [https://replit.com](https://replit.com)
+        2. Click **"Create Repl"**
+        3. Choose **"Import from GitHub"**
+        4. Enter your repository URL
+        5. Select **Node.js** as the language
+      </Step>
+
+      <Step title="Configure Environment Variables">
+        In the Replit **Secrets** tab, add:
+
+        <CodeGroup>
+        ```bash Required Secrets
+        DATABASE_URL="postgresql://user:pass@host:5432/db"
+        SESSION_SECRET="your-secure-random-string"
+
+        # Replit OAuth (auto-populated)
+        REPLIT_DOMAINS="your-repl.replit.app"
+        REPL_ID="your-repl-id"
+        ISSUER_URL="https://replit.com/oidc"
+
+        # Application
+        NODE_ENV="production"
+        ```
+        </CodeGroup>
+
+        <Note>
+          Replit automatically sets `REPLIT_DOMAINS`, `REPL_ID`, and other platform variables.
+        </Note>
+      </Step>
+
+      <Step title="Add API Keys">
+        Configure optional services in Secrets:
+
+        ```bash
+        # Reddit Integration
+        REDDIT_CLIENT_ID="your_client_id"
+        REDDIT_CLIENT_SECRET="your_client_secret"
+
+        # AI Services
+        OPENROUTER_API_KEY="sk-or-v1-your_key"
+        XAI_API_KEY="xai-your_key"
+        FREEPIK_API_KEY="your_freepik_key"
+
+        # Cloud Storage
+        SUPABASE_URL="https://project.supabase.co"
+        SUPABASE_ANON_KEY="your_anon_key"
+        SUPABASE_SERVICE_KEY="your_service_key"
+        ```
+      </Step>
+
+      <Step title="Run Database Migrations">
+        In the Replit Shell, run:
+
+        ```bash
+        npm run db:push
+        ```
+      </Step>
+
+      <Step title="Start Production Server">
+        Click **"Run"** or execute:
+
+        ```bash
+        npm run build
+        npm start
+        ```
+
+        The app will be available at your Replit URL.
+      </Step>
+    </Steps>
+
+    ### Replit-Specific Features
+
+    <CardGroup cols={2}>
+      <Card title="OAuth Integration" icon="key">
+        Automatic Replit OIDC authentication when `REPLIT_DOMAINS` is detected
+      </Card>
+
+      <Card title="Always-On" icon="clock">
+        Configure Replit's "Always On" feature for 24/7 availability
+      </Card>
+
+      <Card title="Auto-Deploy" icon="rocket">
+        Connect to GitHub for automatic deployments on push
+      </Card>
+
+      <Card title="Resource Monitoring" icon="chart-line">
+        Built-in monitoring for CPU, memory, and database connections
+      </Card>
+    </CardGroup>
+  </Tab>
+
+  <Tab title="Docker">
+    ### Docker Deployment
+
+    For containerized deployments with Docker or Docker Compose.
+
+    <Steps>
+      <Step title="Create Dockerfile">
+        Create `Dockerfile` in project root:
+
+        ```dockerfile
+        FROM node:18-alpine
+
+        WORKDIR /app
+
+        # Install dependencies
+        COPY package*.json ./
+        RUN npm ci --only=production
+
+        # Copy application files
+        COPY . .
+
+        # Build application
+        RUN npm run build
+
+        # Expose port
+        EXPOSE 5000
+
+        # Start server
+        CMD ["npm", "start"]
+        ```
+      </Step>
+
+      <Step title="Create Docker Compose">
+        Create `docker-compose.yml`:
+
+        ```yaml
+        version: '3.8'
+
+        services:
+          app:
+            build: .
+            ports:
+              - "5000:5000"
+            environment:
+              - DATABASE_URL=postgresql://postgres:password@db:5432/joip
+              - SESSION_SECRET=${SESSION_SECRET}
+              - NODE_ENV=production
+            depends_on:
+              - db
+
+          db:
+            image: postgres:15-alpine
+            environment:
+              - POSTGRES_DB=joip
+              - POSTGRES_PASSWORD=password
+            volumes:
+              - postgres_data:/var/lib/postgresql/data
+            ports:
+              - "5432:5432"
+
+        volumes:
+          postgres_data:
+        ```
+      </Step>
+
+      <Step title="Build and Run">
+        ```bash
+        # Build containers
+        docker-compose build
+
+        # Start services
+        docker-compose up -d
+
+        # Run migrations
+        docker-compose exec app npm run db:push
+
+        # View logs
+        docker-compose logs -f
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Post-Installation Setup
+
+### Configure API Integrations
+
+<AccordionGroup>
+  <Accordion title="Reddit API Setup" icon="reddit">
+    Required for Reddit-based sessions:
+
+    <Steps>
+      <Step title="Create Reddit App">
+        1. Go to [https://www.reddit.com/prefs/apps](https://www.reddit.com/prefs/apps)
+        2. Click **"Create App"** or **"Create Another App"**
+        3. Choose **"script"** for personal use
+        4. Fill in app details:
+           - **Name**: "JOIP Local Dev"
+           - **Redirect URI**: `http://localhost:5000/callback`
+      </Step>
+
+      <Step title="Add Credentials">
+        Copy the client ID and secret to `.env`:
+
+        ```bash
+        REDDIT_CLIENT_ID="your_client_id_here"
+        REDDIT_CLIENT_SECRET="your_client_secret_here"
+        ```
+      </Step>
+    </Steps>
+  </Accordion>
+
+  <Accordion title="OpenRouter AI Setup" icon="sparkles">
+    Recommended for AI caption generation:
+
+    <Steps>
+      <Step title="Sign Up">
+        Create an account at [https://openrouter.ai](https://openrouter.ai)
+      </Step>
+
+      <Step title="Generate API Key">
+        1. Navigate to **Settings → API Keys**
+        2. Click **"Create API Key"**
+        3. Copy the key (starts with `sk-or-v1-`)
+      </Step>
+
+      <Step title="Add to Environment">
+        ```bash
+        OPENROUTER_API_KEY="sk-or-v1-your_key_here"
+        ```
+
+        The app uses Gemini family models via OpenRouter:
+        - **Manual Editor**: `google/gemini-2.5-pro` (fallback: `gemini-2.5-flash-lite`)
+        - **Smart Captions**: `gemini-2.5-flash-lite`
+      </Step>
+    </Steps>
+  </Accordion>
+
+  <Accordion title="Supabase Storage Setup" icon="cloud">
+    Required for manual sessions and Media Vault:
+
+    <Steps>
+      <Step title="Create Supabase Project">
+        1. Sign up at [https://supabase.com](https://supabase.com)
+        2. Click **"New Project"**
+        3. Choose organization and set project details
+      </Step>
+
+      <Step title="Get API Credentials">
+        1. Go to **Settings → API**
+        2. Copy:
+           - **Project URL**
+           - **anon public** key
+           - **service_role** key (keep secret!)
+      </Step>
+
+      <Step title="Configure Environment">
+        ```bash
+        SUPABASE_URL="https://your-project.supabase.co"
+        SUPABASE_ANON_KEY="your_anon_public_key"
+        SUPABASE_SERVICE_KEY="your_service_role_key"
+        ```
+      </Step>
+
+      <Step title="Create Storage Buckets">
+        The app automatically creates required buckets:
+        - **user-media**: User uploads and manual sessions
+        - **general**: Community content and shared media
+
+        <Note>
+          Buckets are created automatically on first upload if they don't exist.
+        </Note>
+      </Step>
+    </Steps>
+  </Accordion>
+
+  <Accordion title="AI Image Services" icon="image">
+    Optional for AI Undress feature:
+
+    **xAI (Primary Provider):**
+    ```bash
+    XAI_API_KEY="xai-your_key_here"
+    XAI_UNDRESS_MODEL="grok-imagine-image-pro"  # Optional override
+    ```
+
+    **Freepik (Fallback Provider):**
+    ```bash
+    FREEPIK_API_KEY="your_freepik_key_here"
+    ```
+
+    **Provider Selection:**
+    ```bash
+    UNDRESS_PRIMARY_PROVIDER="xai"  # or "freepik"
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Build for Production
+
+<Steps>
+  <Step title="Run Production Build">
+    ```bash
+    npm run build
+    ```
+
+    This executes:
+    1. **Logo Generation**: `node scripts/generate-logos.mjs`
+    2. **Client Build**: `vite build` → outputs to `dist/public`
+    3. **Server Build**: `esbuild` → outputs to `dist/index.js`
+       - Platform: Node.js
+       - Format: ESM
+       - Minified with tree-shaking
+  </Step>
+
+  <Step title="Verify Build Output">
+    Check that these exist:
+    ```
+    dist/
+    ├── public/          # Client bundle
+    │   ├── index.html
+    │   ├── assets/      # JS, CSS, images
+    └── index.js         # Server bundle
+    ```
+  </Step>
+
+  <Step title="Start Production Server">
+    ```bash
+    NODE_ENV=production npm start
+    ```
+
+    The server:
+    - Serves static files from `dist/public`
+    - Handles API routes under `/api`
+    - Listens on port 5000 (or `PORT` env var)
+  </Step>
+</Steps>
+
+## NPM Scripts Reference
+
+<CodeGroup>
+```bash Development
+# Start dev server with HMR
+npm run dev
+
+# Type checking (no build)
+npm run check
+```
+
+```bash Database
+# Apply schema changes (Drizzle)
+npm run db:push
+```
+
+```bash Production
+# Build client + server
+npm run build
+
+# Build app only (alias)
+npm run build:app
+
+# Start production server
+npm start
+```
+</CodeGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Module Not Found Errors" icon="exclamation-triangle">
+    **Symptom**: Cannot find module errors during startup
+
+    **Solution**:
+    ```bash
+    # Clean install
+    rm -rf node_modules package-lock.json
+    npm install
+
+    # Verify Node version
+    node --version  # Should be 18+
+    ```
+  </Accordion>
+
+  <Accordion title="Database Connection Failed" icon="database">
+    **Symptom**: "Connection refused" or timeout errors
+
+    **Solution**:
+    - Verify `DATABASE_URL` is correctly formatted
+    - For local PostgreSQL: Check if service is running
+      ```bash
+      # macOS
+      brew services list
+
+      # Linux
+      sudo systemctl status postgresql
+      ```
+    - For cloud database: Verify firewall allows your IP
+    - Test connection:
+      ```bash
+      psql "$DATABASE_URL"
+      ```
+  </Accordion>
+
+  <Accordion title="Build Failures" icon="warning">
+    **Symptom**: Build process fails with errors
+
+    **Solution**:
+    ```bash
+    # Clear build cache
+    rm -rf dist/
+
+    # Ensure TypeScript has no errors
+    npm run check
+
+    # Rebuild
+    npm run build
+    ```
+  </Accordion>
+
+  <Accordion title="Port Already in Use" icon="network-wired">
+    **Symptom**: "Port 5000 is already in use"
+
+    **Solution**:
+    ```bash
+    # Option 1: Change port in .env
+    PORT=3000
+
+    # Option 2: Find and kill process
+    lsof -ti:5000 | xargs kill -9
+    ```
+  </Accordion>
+
+  <Accordion title="Supabase Storage Issues" icon="cloud">
+    **Symptom**: Manual sessions fail with 503 errors
+
+    **Solution**:
+    1. Verify Supabase credentials in `.env`
+    2. Check if project is paused (resume in Supabase dashboard)
+    3. Test storage status:
+       ```bash
+       curl http://localhost:5000/api/storage/status
+       ```
+    4. Review error codes:
+       - `STORAGE_CONFIG_ERROR`: Missing env variables
+       - `STORAGE_UNREACHABLE`: Cannot connect to Supabase
+       - `STORAGE_PREFLIGHT_FAILED`: Bucket test failed
+  </Accordion>
+</AccordionGroup>
+
+## Health Checks
+
+Verify your installation with these endpoints:
+
+```bash
+# Basic health check (TODO: implement)
+curl http://localhost:5000/health
+
+# Storage diagnostics
+curl http://localhost:5000/api/storage/status
+
+# Database connection (via user endpoint)
+curl http://localhost:5000/api/auth/user
+```
+
+## Performance Optimization
+
+<CardGroup cols={2}>
+  <Card title="Database" icon="database">
+    - Connection pooling enabled by default
+    - Health monitoring with retry logic
+    - Indexes on all foreign keys
+    - Query timeout: 20 seconds
+  </Card>
+
+  <Card title="Application" icon="rocket">
+    - Production build minified
+    - Tree-shaking enabled
+    - Static asset caching
+    - Image optimization with Sharp
+  </Card>
+</CardGroup>
+
+## Security Checklist
+
+<Steps>
+  <Step title="Environment Security">
+    - [ ] Never commit `.env` files to Git
+    - [ ] Use strong `SESSION_SECRET` (32+ characters)
+    - [ ] Rotate API keys regularly
+    - [ ] Use environment-specific API keys
+  </Step>
+
+  <Step title="Database Security">
+    - [ ] Use strong database passwords
+    - [ ] Enable SSL for database connections
+    - [ ] Restrict database IP whitelist
+    - [ ] Regular backup schedule
+  </Step>
+
+  <Step title="Application Security">
+    - [ ] Keep dependencies updated
+    - [ ] Enable rate limiting in production
+    - [ ] Configure CORS properly
+    - [ ] Use HTTPS in production
+  </Step>
+</Steps>
+
+<Warning>
+  **Never expose API keys or secrets in client code.** All sensitive operations should go through server-side API routes.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Environment Setup" icon="gear" href="/environment-setup">
+    Complete guide to all environment variables and configuration options
+  </Card>
+
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Create your first session and explore features
+  </Card>
+</CardGroup>

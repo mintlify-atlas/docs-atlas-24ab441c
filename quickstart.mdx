@@ -1,80 +1,246 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick start
+description: Get started with JOIP Web Application in minutes
+icon: rocket
 ---
 
-## Get started in three steps
+Get your JOIP Web Application up and running in under 10 minutes. This guide walks you through installation, configuration, and creating your first session.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, ensure you have:
+
+- **Node.js 20+** installed
+- **PostgreSQL database** (local or cloud)
+- **Reddit API credentials** ([Get them here](https://www.reddit.com/prefs/apps))
+- **Supabase account** for file storage ([Sign up](https://supabase.com))
+
+## Quick installation
+
+<Steps>
+  <Step title="Clone and install">
+    ```bash
+    git clone https://github.com/MatthewSabia1/Joip-Web-App-2.git
+    cd Joip-Web-App-2
+    npm install
+    ```
+  </Step>
+
+  <Step title="Configure environment">
+    Create a `.env` file in the project root:
+
+    ```bash
+    # Database
+    DATABASE_URL="postgresql://user:password@localhost:5432/joip"
+    
+    # Session
+    SESSION_SECRET="your-secure-random-string-here"
+    
+    # Reddit API
+    REDDIT_CLIENT_ID="your-reddit-client-id"
+    REDDIT_CLIENT_SECRET="your-reddit-client-secret"
+    
+    # Supabase Storage
+    SUPABASE_URL="https://your-project.supabase.co"
+    SUPABASE_ANON_KEY="your-anon-key"
+    SUPABASE_SERVICE_KEY="your-service-key"
+    ```
+
+    <Note>
+      See the [Environment Setup](/environment-setup) guide for complete configuration options.
+    </Note>
+  </Step>
+
+  <Step title="Initialize database">
+    Apply database migrations:
+
+    ```bash
+    npm run db:push
+    ```
+
+    This creates all necessary tables and relationships.
+  </Step>
+
+  <Step title="Start development server">
+    ```bash
+    npm run dev
+    ```
+
+    The application will start on [http://localhost:5000](http://localhost:5000)
+  </Step>
+
+  <Step title="Create your account">
+    - Navigate to `http://localhost:5000`
+    - Click **Sign Up** or **Login**
+    - Create a local development account
+    - Complete the age verification (18+)
+  </Step>
+</Steps>
+
+## Create your first session
+
+Now that you're set up, let's create a multimedia session with AI-generated captions.
+
+### Reddit-based session
+
+<Steps>
+  <Step title="Navigate to Sessions">
+    Click **Sessions** in the sidebar, then click **New Session** → **Reddit Session**
+  </Step>
+
+  <Step title="Configure your session">
+    Fill in the session details:
+    
+    - **Title**: My First JOIP Session
+    - **Subreddits**: `pics`, `aww` (comma-separated)
+    - **Interval**: 5-10 seconds (how long each image displays)
+    - **Transition**: Fade
+    - **Caption Theme**: JOI (or choose your preference)
+  </Step>
+
+  <Step title="Save and play">
+    1. Click **Save Session**
+    2. Wait for media to populate (happens automatically)
+    3. Click **Play** to start the slideshow
+    
+    <Note>
+      Your first session may take 10-15 seconds to fetch media from Reddit and generate AI captions.
+    </Note>
+  </Step>
+</Steps>
+
+### Manual session
+
+Prefer to upload your own images? Create a custom session:
+
+<Steps>
+  <Step title="Start manual session">
+    Click **Sessions** → **New Session** → **Manual Session**
+  </Step>
+
+  <Step title="Upload images">
+    - Drag and drop images, or click to browse
+    - Paste images from clipboard
+    - Add up to 100 images (100MB each max)
+  </Step>
+
+  <Step title="Write captions">
+    For each slide, write your custom caption (no character limit, but keep under 500 for best display)
+  </Step>
+
+  <Step title="Configure and save">
+    - Set your intervals and transition
+    - Choose a thumbnail
+    - Click **Create Session**
+  </Step>
+</Steps>
+
+## Enable AI features (Optional)
+
+To use AI caption generation and Smart Captions, add AI provider keys:
+
+<Tabs>
+  <Tab title="OpenRouter (Recommended)">
+    ```bash
+    OPENROUTER_API_KEY="sk-or-v1-..."
+    ```
+    
+    OpenRouter provides access to multiple AI models including Gemini, which works well for NSFW content.
+  </Tab>
+
+  <Tab title="OpenAI">
+    ```bash
+    OPENAI_API_KEY="sk-..."
+    ```
+    
+    OpenAI's GPT models can also be used, though may have more content restrictions.
+  </Tab>
+</Tabs>
+
+<Warning>
+  Without AI provider keys, caption generation will fall back to themed templates.
+</Warning>
+
+## Explore features
+
+Now that you have your first session, explore these features:
+
+<CardGroup cols={2}>
+  <Card title="Smart Captions" icon="wand-magic-sparkles" href="/features/smart-captions">
+    Generate AI captions for any image with customizable themes and styling
+  </Card>
+  
+  <Card title="Babecock Studio" icon="images" href="/features/babecock-studio">
+    Combine images with automatic layout detection
+  </Card>
+  
+  <Card title="Media Vault" icon="folder-open" href="/features/media-vault">
+    Manage your uploaded files in a centralized library
+  </Card>
+  
+  <Card title="Community" icon="users" href="/features/community">
+    Discover and share sessions with the community
+  </Card>
+</CardGroup>
+
+## Common issues
 
 <AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+  <Accordion title="Database connection fails">
+    **Cause:** Invalid `DATABASE_URL` or database not running
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
+    **Solution:**
+    1. Verify your database is running: `pg_isready`
+    2. Check connection string format: `postgresql://user:password@host:5432/database`
+    3. Ensure database exists: `createdb joip`
   </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+
+  <Accordion title="Reddit API returns 401 errors">
+    **Cause:** Invalid Reddit credentials
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
+    **Solution:**
+    1. Verify credentials at [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps)
+    2. Ensure you're using the correct client ID and secret
+    3. Check that your app type is "web app" or "script"
+  </Accordion>
+
+  <Accordion title="Images fail to upload">
+    **Cause:** Supabase Storage not configured or credentials invalid
+    
+    **Solution:**
+    1. Verify Supabase project URL and keys
+    2. Create `user-media` and `general` buckets in Supabase
+    3. Set bucket policies to public
+    4. Check storage diagnostics: `GET /api/storage/status`
+  </Accordion>
+
+  <Accordion title="AI captions not generating">
+    **Cause:** Missing AI provider keys or content policy rejection
+    
+    **Solution:**
+    1. Add `OPENROUTER_API_KEY` or `OPENAI_API_KEY` to `.env`
+    2. Restart the server
+    3. Check server logs for API errors
+    4. Try a different caption theme
   </Accordion>
 </AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Installation Guide" icon="download" href="/installation">
+    Complete installation instructions for all environments
+  </Card>
+  
+  <Card title="Environment Setup" icon="gear" href="/environment-setup">
+    Comprehensive environment variable reference
+  </Card>
+  
+  <Card title="API Documentation" icon="code" href="/api/introduction">
+    Explore the REST API for programmatic access
+  </Card>
+  
+  <Card title="Deployment Guide" icon="rocket" href="/guides/deployment/replit">
+    Deploy to Replit for production use
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

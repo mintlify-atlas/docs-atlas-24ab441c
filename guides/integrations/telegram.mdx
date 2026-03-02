@@ -1,0 +1,690 @@
+---
+title: Telegram Bot Integration
+description: Configure Telegram bot for Stars payments and channel management
+icon: brands telegram
+---
+
+The Telegram integration enables **Stars payments** (in-app purchases) and **channel membership management** for JOIP users.
+
+## Overview
+
+Telegram integration provides:
+- **Telegram Stars payments** for credit purchases
+- **Automated channel invites** for patrons
+- **Membership verification** and bonus credits
+- **Bot message customization** for admin control
+- **Deep linking** for seamless payment flow
+
+<Note>
+  Telegram Stars is Telegram's digital currency. Users pay with Stars, and you receive payouts in USD.
+</Note>
+
+## Prerequisites
+
+- Telegram account
+- BotFather access for creating bots
+- Telegram channel (optional, for patron perks)
+- Approved bot for Stars payments
+
+## Setup Steps
+
+<Steps>
+  <Step title="Create Telegram Bot">
+    Open Telegram and message [@BotFather](https://t.me/botfather):
+
+    1. Send `/newbot`
+    2. Choose a display name (e.g., "JOIP Credits Bot")
+    3. Choose a username (must end in `bot`, e.g., `JoipCreditsBot`)
+    4. Copy the **bot token** provided
+
+    <CodeGroup>
+    ```text BotFather Response
+    Done! Congratulations on your new bot.
+    Token: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz123456789
+    
+    Use this token to access the HTTP API.
+    ```
+    </CodeGroup>
+
+    <Warning>
+      Keep your bot token secret. Anyone with this token can control your bot.
+    </Warning>
+  </Step>
+
+  <Step title="Request Stars Payments Access">
+    Telegram Stars requires approval from Telegram:
+
+    1. Message [@BotSupport](https://t.me/BotSupport)
+    2. Request Stars payment access
+    3. Provide:
+       - Bot username
+       - Description of your service
+       - Business details (if required)
+    4. Wait for approval (typically 1-3 days)
+
+    <Note>
+      You can set up the bot before approval, but payments won't work until enabled.
+    </Note>
+  </Step>
+
+  <Step title="Create Telegram Channel (Optional)">
+    For patron perks and announcements:
+
+    1. Create a new channel in Telegram
+    2. Make it public or private
+    3. Add your bot as an administrator with:
+       - **Post messages** permission
+       - **Invite users via link** permission
+    4. Get the channel ID:
+       - Forward a message from the channel to [@userinfobot](https://t.me/userinfobot)
+       - Copy the channel ID (format: `-100123456789`)
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    Add credentials to `.env`:
+
+    <CodeGroup>
+    ```bash Required Variables
+    TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
+    TELEGRAM_BOT_USERNAME=JoipCreditsBot
+    TELEGRAM_WEBHOOK_SECRET=your-random-secret-string
+    ```
+
+    ```bash Optional (Channel)
+    TELEGRAM_CHANNEL_ID=-100123456789
+    TELEGRAM_CHANNEL_BONUS_CREDITS=25
+    ```
+    </CodeGroup>
+
+    **Generate webhook secret**:
+    <CodeGroup>
+    ```bash Generate Secret
+    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+    # Output: a1b2c3d4e5f6...  (use this for TELEGRAM_WEBHOOK_SECRET)
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Set Webhook URL">
+    After deploying your app, configure the webhook:
+
+    <CodeGroup>
+    ```bash Manual Setup (via cURL)
+    curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "url": "https://your-app.com/api/telegram/webhook",
+        "secret_token": "your-webhook-secret",
+        "allowed_updates": ["message", "pre_checkout_query"]
+      }'
+    ```
+
+    ```typescript Automatic Setup (via code)
+    import { setWebhook } from './server/telegramBot';
+
+    // In server startup
+    await setWebhook('https://your-app.com/api/telegram/webhook');
+    ```
+    </CodeGroup>
+
+    Verify webhook:
+    <CodeGroup>
+    ```bash Check Webhook
+    curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getWebhookInfo"
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Set Bot Commands">
+    Configure user-facing commands:
+
+    <CodeGroup>
+    ```typescript Set Commands
+    import { setMyCommands, REQUIRED_TELEGRAM_COMMANDS } from './server/telegramBot';
+
+    await setMyCommands(REQUIRED_TELEGRAM_COMMANDS);
+    // Sets: /terms, /support, /paysupport
+    ```
+    </CodeGroup>
+
+    Users will see these commands when typing `/` in the bot chat.
+  </Step>
+
+  <Step title="Test Integration">
+    Verify everything works:
+
+    1. Send `/start` to your bot
+    2. Should receive welcome message
+    3. Try `/terms` and `/support` commands
+    4. Check server logs for webhook events
+
+    <CodeGroup>
+    ```bash Success Logs
+    [Telegram] Webhook set to: https://your-app.com/api/telegram/webhook
+    [Telegram] Bot commands configured
+    [Telegram] Received message from user 123456
+    ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+## Implementation Details
+
+### Payment Flow
+
+The Telegram Stars payment flow:
+
+<Steps>
+  <Step title="User Initiates Purchase">
+    User clicks "Pay with Telegram" on a credit package in JOIP.
+
+    <CodeGroup>
+    ```typescript Client-Side
+    // Create payment session
+    const response = await fetch('/api/payments/create-session', {
+      method: 'POST',
+      body: JSON.stringify({
+        packageId: 'package_100',
+        paymentMethod: 'telegram'
+      })
+    });
+
+    const { sessionId, deepLink } = await response.json();
+    // deepLink: https://t.me/YourBot?start=pay_abc123
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Deep Link Opens Bot">
+    User clicks deep link, opens Telegram bot.
+
+    Bot receives `/start` command with payment payload:
+    <CodeGroup>
+    ```typescript Webhook Handler
+    // Webhook receives:
+    {
+      message: {
+        text: "/start pay_abc123",
+        from: { id: 123456, username: "johndoe" }
+      }
+    }
+
+    // Extract session ID from payload
+    const [, sessionId] = message.text.split(' ');
+    // sessionId: "abc123" (remove "pay_" prefix)
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Send Invoice">
+    Server sends Telegram Stars invoice:
+
+    <CodeGroup>
+    ```typescript Send Invoice
+    import { sendInvoice } from './server/telegramBot';
+
+    await sendInvoice(
+      chatId,      // User's Telegram chat ID
+      session,     // Payment session from DB
+      package      // Credit package details
+    );
+
+    // User sees invoice in chat with "Pay X Stars" button
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Pre-Checkout Query">
+    Before charging, Telegram sends pre-checkout query:
+
+    <CodeGroup>
+    ```typescript Validate Payment
+    app.post('/api/telegram/webhook', async (req, res) => {
+      const { pre_checkout_query } = req.body;
+      
+      if (pre_checkout_query) {
+        // Validate session, package, user
+        const valid = await validatePaymentSession(
+          pre_checkout_query.invoice_payload
+        );
+        
+        await answerPreCheckoutQuery(
+          pre_checkout_query.id,
+          valid,
+          valid ? undefined : "Session expired"
+        );
+      }
+    });
+    ```
+    </CodeGroup>
+
+    <Warning>
+      You must respond to pre-checkout queries within **10 seconds** or the payment fails.
+    </Warning>
+  </Step>
+
+  <Step title="Successful Payment">
+    Telegram charges user and sends `successful_payment` webhook:
+
+    <CodeGroup>
+    ```typescript Process Payment
+    const { successful_payment } = message;
+    
+    if (successful_payment) {
+      const sessionId = successful_payment.invoice_payload;
+      
+      // Add credits to user account
+      await creditService.addCredits(
+        userId,
+        package.credits,
+        `Telegram Stars purchase (${sessionId})`
+      );
+      
+      // Mark payment session as completed
+      await updatePaymentSession(sessionId, {
+        status: 'completed',
+        telegramChargeId: successful_payment.telegram_payment_charge_id
+      });
+      
+      // Send confirmation message
+      await sendMessage(
+        chatId,
+        `✅ Payment complete! ${package.credits} credits added.`
+      );
+    }
+    ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+### Channel Management
+
+Automatic channel membership management:
+
+<CodeGroup>
+```typescript Channel Verification
+import { 
+  checkChannelMembership, 
+  createAndSendInvite,
+  processPeriodicMembershipChecks
+} from './server/telegramChannelService';
+
+// Check if user is in channel
+const isMember = await checkChannelMembership(userId, telegramId);
+
+if (!isMember) {
+  // Send invite link
+  const result = await createAndSendInvite(telegramId);
+  // User receives message with "Join Channel" button
+}
+
+// Periodic checks (run via cron)
+const stats = await processPeriodicMembershipChecks();
+// { checked: 50, invited: 10, errors: 0 }
+```
+</CodeGroup>
+
+### Message Customization
+
+Admins can customize bot messages:
+
+<CodeGroup>
+```typescript Update Bot Message
+import { updateBotMessage, getBotMessage } from './server/telegramMessageService';
+
+// Update payment success message
+await updateBotMessage(
+  'payment_success',
+  '✅ Payment complete!\n\n{credits} credits have been added to your account.',
+  adminUserId,
+  'HTML'  // parse_mode
+);
+
+// Get message with placeholders filled
+const message = await getBotMessage('payment_success', {
+  credits: '100'
+});
+console.log(message.content);
+// "✅ Payment complete!\n\n100 credits have been added to your account."
+```
+</CodeGroup>
+
+**Available message keys**:
+- `bot_welcome` - Initial /start message
+- `payment_success` - Payment completed
+- `payment_failed` - Payment verification failed
+- `session_ready` - Payment session created
+- `terms_info` - /terms command response
+- `support_info` - /support command response
+- `channel_invite` - Channel invitation message
+- `bonus_granted` - Channel join bonus
+
+## API Reference
+
+### Core Functions
+
+<CodeGroup>
+```typescript telegramBot.ts
+// Message functions
+function sendMessage(
+  chatId: string | number,
+  text: string,
+  options?: { parse_mode?: 'HTML' | 'Markdown'; reply_markup?: object }
+): Promise<void>
+
+function sendPhoto(
+  chatId: string | number,
+  photo: string,  // URL or file_id
+  caption?: string,
+  options?: object
+): Promise<void>
+
+// Payment functions
+function sendInvoice(
+  chatId: string | number,
+  session: PaymentSession,
+  pkg: CreditPackage
+): Promise<void>
+
+function answerPreCheckoutQuery(
+  queryId: string,
+  ok: boolean,
+  errorMessage?: string
+): Promise<void>
+
+function createInvoiceLink(
+  sessionId: string,
+  pkg: CreditPackage
+): Promise<string>  // Returns direct payment link
+
+function refundStarPayment(
+  userId: string | number,
+  telegramPaymentChargeId: string
+): Promise<void>
+
+// Webhook functions
+function setWebhook(webhookUrl: string): Promise<void>
+function getWebhookInfo(): Promise<object>
+function deleteWebhook(): Promise<void>
+function verifyWebhookSecret(headerSecret: string): boolean
+
+// Bot info
+function getMe(): Promise<{ id: number; username: string; ... }>
+function setMyCommands(commands: TelegramBotCommand[]): Promise<void>
+function getMyCommands(): Promise<TelegramBotCommand[]>
+
+// Channel functions
+function getChat(chatId: string | number): Promise<object>
+function getChatMember(
+  chatId: string | number,
+  userId: number
+): Promise<{ status: string }>
+function createChatInviteLink(
+  chatId: string | number,
+  options?: { member_limit?: number; expire_date?: number }
+): Promise<{ invite_link: string }>
+```
+</CodeGroup>
+
+### Type Definitions
+
+<CodeGroup>
+```typescript Webhook Types
+interface TelegramUpdate {
+  update_id: number;
+  message?: TelegramMessage;
+  pre_checkout_query?: TelegramPreCheckoutQuery;
+  chat_member?: TelegramChatMemberUpdate;
+}
+
+interface TelegramMessage {
+  message_id: number;
+  from?: TelegramUser;
+  chat: { id: number; type: string };
+  text?: string;
+  successful_payment?: {
+    currency: string;  // "XTR" for Stars
+    total_amount: number;
+    invoice_payload: string;  // Your session ID
+    telegram_payment_charge_id: string;
+  };
+  refunded_payment?: {
+    currency: string;
+    total_amount: number;
+    telegram_payment_charge_id: string;
+  };
+}
+
+interface TelegramPreCheckoutQuery {
+  id: string;
+  from: TelegramUser;
+  currency: string;
+  total_amount: number;
+  invoice_payload: string;  // Your session ID
+}
+```
+</CodeGroup>
+
+## Common Operations
+
+### Send Custom Message
+
+<CodeGroup>
+```typescript With Inline Buttons
+import { sendMessage } from './server/telegramBot';
+
+await sendMessage(
+  chatId,
+  'Choose a credit package:',
+  {
+    parse_mode: 'HTML',
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: '100 Credits - 10 Stars', callback_data: 'buy_100' },
+          { text: '500 Credits - 45 Stars', callback_data: 'buy_500' }
+        ],
+        [
+          { text: 'Visit Website', url: 'https://app.joip.io' }
+        ]
+      ]
+    }
+  }
+);
+```
+</CodeGroup>
+
+### Process Refund
+
+<CodeGroup>
+```typescript Refund Transaction
+import { refundStarPayment } from './server/telegramBot';
+import { creditService } from './server/creditService';
+
+// Refund Telegram Stars payment
+await refundStarPayment(
+  telegramUserId,
+  telegramPaymentChargeId
+);
+
+// Deduct credits from user account
+await creditService.deductCredits(
+  userId,
+  amount,
+  `Refund for ${sessionId}`
+);
+
+// Notify user
+await sendMessage(
+  chatId,
+  '⚠️ Your purchase has been refunded. Credits removed from your account.'
+);
+```
+</CodeGroup>
+
+### Bulk Channel Invites
+
+<CodeGroup>
+```typescript Admin Function
+import { bulkInviteUsers } from './server/telegramChannelService';
+
+// Invite all patrons to channel
+const patronIds = await db
+  .select({ id: users.id })
+  .from(users)
+  .where(eq(users.isActivePatron, true));
+
+const result = await bulkInviteUsers(
+  patronIds.map(u => u.id),
+  adminUserId
+);
+
+console.log(`Invited ${result.success.length} users`);
+console.log(`Failed: ${result.failed.length}`);
+```
+</CodeGroup>
+
+## Error Handling
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="Webhook Not Receiving Events">
+    **Cause**: Webhook URL not accessible or secret mismatch
+
+    **Solution**:
+    1. Verify webhook URL is publicly accessible (HTTPS required)
+    2. Check webhook secret matches `TELEGRAM_WEBHOOK_SECRET`
+    3. Use `getWebhookInfo()` to see last error
+    4. Test webhook: send `/start` to bot and check server logs
+    5. Ensure server is deployed (webhooks don't work on localhost)
+  </Accordion>
+
+  <Accordion title="Invoice Not Appearing">
+    **Cause**: Bot doesn't have Stars payment permission
+
+    **Solution**:
+    - Check bot is approved by @BotSupport
+    - Verify `provider_token` is empty string (required for Stars)
+    - Check `currency` is "XTR" (Telegram Stars currency code)
+    - Review error in Telegram bot chat
+  </Accordion>
+
+  <Accordion title="Pre-Checkout Timeout">
+    **Cause**: Response took longer than 10 seconds
+
+    **Solution**:
+    - Optimize validation logic
+    - Use database indexes for session lookup
+    - Pre-validate data when creating session
+    - Add timeout monitoring to webhook handler
+  </Accordion>
+
+  <Accordion title="Channel Invite Failed">
+    **Cause**: Bot lacks permissions in channel
+
+    **Solution**:
+    - Ensure bot is admin in channel
+    - Grant "Invite users via link" permission
+    - Check channel ID format (should start with `-100`)
+    - Verify channel is not deleted or banned
+  </Accordion>
+</AccordionGroup>
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Webhook Verification" icon="shield-check">
+    Always verify webhook secret:
+    
+    <CodeGroup>
+    ```typescript Verify Secret
+    const secret = req.headers['x-telegram-bot-api-secret-token'];
+    
+    if (!verifyWebhookSecret(secret)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    ```
+    </CodeGroup>
+  </Card>
+
+  <Card title="Bot Token Protection" icon="key">
+    - Store in `.env` only
+    - Never commit to version control
+    - Regenerate if exposed
+    - Use separate bots for dev/prod
+  </Card>
+
+  <Card title="Payment Validation" icon="circle-check">
+    Validate all payment data:
+    - Session exists and not expired
+    - Package is available
+    - Amount matches package price
+    - User owns the session
+  </Card>
+
+  <Card title="Rate Limiting" icon="gauge">
+    Implement rate limits:
+    - Max payments per user per hour
+    - Cooldown on failed attempts
+    - Block suspicious patterns
+    - Log all payment events
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Debug Webhook Events
+
+<CodeGroup>
+```typescript Log All Updates
+app.post('/api/telegram/webhook', (req, res) => {
+  console.log('Telegram webhook:', JSON.stringify(req.body, null, 2));
+  // Process update...
+});
+```
+</CodeGroup>
+
+### Test Bot Locally
+
+For development, use **polling** instead of webhooks:
+
+<CodeGroup>
+```typescript Polling Mode (Dev Only)
+import { deleteWebhook } from './server/telegramBot';
+
+// Remove webhook
+await deleteWebhook();
+
+// Use getUpdates in loop (not shown - use library like 'node-telegram-bot-api')
+```
+</CodeGroup>
+
+<Warning>
+  Production should always use webhooks. Polling is inefficient and may hit rate limits.
+</Warning>
+
+## Cost & Pricing
+
+### Telegram Stars
+
+- **Currency**: XTR (Telegram Stars)
+- **User cost**: ~$0.01 USD per Star (varies by region)
+- **Your revenue**: ~50% of user payment
+- **Payouts**: Monthly via Telegram
+
+**Example pricing**:
+- 10 Stars → User pays ~$0.10 → You receive ~$0.05
+- 100 Stars → User pays ~$1.00 → You receive ~$0.50
+- 1000 Stars → User pays ~$10.00 → You receive ~$5.00
+
+<Note>
+  Telegram takes ~50% fee. Factor this into your pricing strategy.
+</Note>
+
+## Related Resources
+
+- [Telegram Bot API](https://core.telegram.org/bots/api)
+- [Telegram Stars Documentation](https://core.telegram.org/bots/payments-stars)
+- [BotFather Commands](https://core.telegram.org/bots/features#botfather)
+- [Webhook Guide](https://core.telegram.org/bots/webhooks)

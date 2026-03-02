@@ -1,0 +1,343 @@
+---
+title: 'List User Media'
+openapi: 'GET /api/user/media'
+---
+
+<Note>
+  This endpoint requires authentication. Users can only access their own media files.
+</Note>
+
+## Overview
+
+Retrieve all media files from the user's Media Vault. This endpoint automatically syncs storage files with the database, backfilling any missing records.
+
+## Query Parameters
+
+<ParamField query="category" type="string" default="all">
+  Filter media by source category.
+  
+  **Options**:
+  - `all` - Return all media
+  - `smart-caption` - Only Smart Captions
+  - `babecock` - Only Babecock Studio media
+  - `hypnococks` - Only HypnoCocks media
+  - `upload` - Only user uploads
+</ParamField>
+
+<ParamField query="dateRange" type="string" default="all">
+  Filter media by creation date.
+  
+  **Options**:
+  - `all` - All time
+  - `today` - Today only
+  - `week` - Last 7 days
+  - `month` - Current month
+  - `year` - Current year
+</ParamField>
+
+<ParamField query="search" type="string">
+  Search media by filename, original name, caption, or character name. Case-insensitive partial matching.
+</ParamField>
+
+## Storage Synchronization
+
+### Automatic Backfill
+
+This endpoint performs automatic synchronization between Supabase Storage and the database:
+
+1. **Fetch existing database records** for the user
+2. **List all files** from the following storage folders:
+   - `Captions/` (Smart Captions)
+   - `Babecocks/` (Babecock Studio)
+   - `HypnoCocks/` (HypnoCocks)
+   - `Uploads/` (General uploads)
+3. **Backfill missing records**: Any files found in storage but not in the database are automatically added
+4. **Queue enrichment**: Newly backfilled items are queued for metadata enrichment (dimensions, character detection, etc.)
+
+### Backfilled Media Fields
+
+```javascript
+{
+  userId: "user_123",
+  fileName: "file.jpg",
+  originalName: "file.jpg",
+  fileUrl: "https://...supabase.co/.../file.jpg",
+  filePath: "users/user_123/Captions/file.jpg",
+  fileSize: 0, // Size from storage metadata if available
+  mimeType: "application/octet-stream", // Or from storage metadata
+  source: "smart-caption", // Derived from folder name
+  width: 0,
+  height: 0,
+  isShared: false,
+  shareToCommunity: false,
+  subreddit: null,
+  enrichmentStatus: "pending",
+  metadata: {
+    tool: "smart-caption",
+    backfilledAt: "2024-03-08T12:34:56.789Z"
+  }
+}
+```
+
+## Response
+
+<ResponseField name="files" type="array" required>
+  Array of media file objects
+</ResponseField>
+
+<ResponseField name="totalCount" type="number" required>
+  Total number of files returned after filtering
+</ResponseField>
+
+<ResponseField name="categories" type="object" required>
+  Count of files in each category
+  
+  **Properties**:
+  - `smart-caption` (number)
+  - `babecock` (number)
+  - `hypnococks` (number)
+  - `upload` (number)
+</ResponseField>
+
+### File Object Schema
+
+<ResponseField name="files[].id" type="number" required>
+  Database ID of the media item (for bulk operations)
+</ResponseField>
+
+<ResponseField name="files[].name" type="string" required>
+  Display name of the file (friendly name or filename)
+</ResponseField>
+
+<ResponseField name="files[].originalName" type="string" required>
+  Original filename when uploaded
+</ResponseField>
+
+<ResponseField name="files[].category" type="string" required>
+  Source category: `smart-caption`, `babecock`, `hypnococks`, or `upload`
+</ResponseField>
+
+<ResponseField name="files[].size" type="number" required>
+  File size in bytes
+</ResponseField>
+
+<ResponseField name="files[].lastModified" type="string" required>
+  ISO 8601 timestamp of when the file was created
+</ResponseField>
+
+<ResponseField name="files[].created_at" type="string" required>
+  ISO 8601 timestamp of creation (same as lastModified)
+</ResponseField>
+
+<ResponseField name="files[].url" type="string" required>
+  Public URL to access the file
+</ResponseField>
+
+<ResponseField name="files[].path" type="string" required>
+  Storage path: `users/{userId}/{Folder}/{filename}`
+</ResponseField>
+
+<ResponseField name="files[].subreddit" type="string">
+  Source subreddit if the media was fetched from Reddit
+</ResponseField>
+
+<ResponseField name="files[].width" type="number">
+  Image/video width in pixels (if enriched)
+</ResponseField>
+
+<ResponseField name="files[].height" type="number">
+  Image/video height in pixels (if enriched)
+</ResponseField>
+
+<ResponseField name="files[].isShared" type="boolean" required>
+  Whether the media has a share link generated
+</ResponseField>
+
+<ResponseField name="files[].shareCode" type="string">
+  Unique share code if the media is shared
+</ResponseField>
+
+<ResponseField name="files[].characterName" type="string">
+  Detected character or model name (if enriched)
+</ResponseField>
+
+<ResponseField name="files[].enrichmentStatus" type="string">
+  Status of metadata enrichment: `pending`, `processing`, `completed`, or `failed`
+</ResponseField>
+
+<ResponseField name="files[].enrichedAt" type="string">
+  ISO 8601 timestamp of when enrichment was completed
+</ResponseField>
+
+### Success Response Example
+
+```json
+{
+  "files": [
+    {
+      "id": 456,
+      "name": "caption-1709856234567-beach_photo.jpg",
+      "originalName": "beach_photo.jpg",
+      "category": "smart-caption",
+      "size": 2048576,
+      "lastModified": "2024-03-08T10:30:34.567Z",
+      "created_at": "2024-03-08T10:30:34.567Z",
+      "url": "https://example.supabase.co/storage/v1/object/public/user-media/users/user_123/Captions/caption-1709856234567-beach_photo.jpg",
+      "path": "users/user_123/Captions/caption-1709856234567-beach_photo.jpg",
+      "subreddit": "EarthPorn",
+      "width": 1920,
+      "height": 1080,
+      "isShared": true,
+      "shareCode": "abc123def456",
+      "characterName": null,
+      "enrichmentStatus": "completed",
+      "enrichedAt": "2024-03-08T10:31:05.123Z"
+    },
+    {
+      "id": 457,
+      "name": "babecock-1709856300000-composite.png",
+      "originalName": "composite.png",
+      "category": "babecock",
+      "size": 3145728,
+      "lastModified": "2024-03-08T11:45:00.000Z",
+      "created_at": "2024-03-08T11:45:00.000Z",
+      "url": "https://example.supabase.co/storage/v1/object/public/user-media/users/user_123/Babecocks/babecock-1709856300000-composite.png",
+      "path": "users/user_123/Babecocks/babecock-1709856300000-composite.png",
+      "subreddit": null,
+      "width": 2560,
+      "height": 1440,
+      "isShared": false,
+      "shareCode": null,
+      "characterName": "Riley Reid",
+      "enrichmentStatus": "completed",
+      "enrichedAt": "2024-03-08T11:45:30.456Z"
+    }
+  ],
+  "totalCount": 2,
+  "categories": {
+    "smart-caption": 1,
+    "babecock": 1,
+    "hypnococks": 0,
+    "upload": 0
+  }
+}
+```
+
+## Error Responses
+
+### 500 Internal Server Error
+
+```json
+{
+  "message": "Failed to fetch user media"
+}
+```
+
+## Example Usage
+
+### cURL
+
+```bash
+# Get all media
+curl -X GET "https://your-domain.com/api/user/media" \
+  -H "Cookie: connect.sid=your-session-cookie"
+
+# Filter by category
+curl -X GET "https://your-domain.com/api/user/media?category=smart-caption" \
+  -H "Cookie: connect.sid=your-session-cookie"
+
+# Search and filter by date
+curl -X GET "https://your-domain.com/api/user/media?search=beach&dateRange=week" \
+  -H "Cookie: connect.sid=your-session-cookie"
+```
+
+### JavaScript (Fetch API)
+
+```javascript
+// Fetch all media
+const response = await fetch('/api/user/media', {
+  credentials: 'include'
+});
+const data = await response.json();
+console.log(`Total files: ${data.totalCount}`);
+console.log('Files:', data.files);
+
+// Filter by category
+const smartCaptionsResponse = await fetch('/api/user/media?category=smart-caption', {
+  credentials: 'include'
+});
+const smartCaptions = await smartCaptionsResponse.json();
+```
+
+### React Example with Filtering
+
+```jsx
+import { useState, useEffect } from 'react';
+
+function MediaGallery() {
+  const [media, setMedia] = useState([]);
+  const [category, setCategory] = useState('all');
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMedia = async () => {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (category !== 'all') params.append('category', category);
+      if (search) params.append('search', search);
+
+      const response = await fetch(`/api/user/media?${params}`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      setMedia(data.files);
+      setLoading(false);
+    };
+
+    fetchMedia();
+  }, [category, search]);
+
+  return (
+    <div>
+      <div>
+        <select value={category} onChange={(e) => setCategory(e.target.value)}>
+          <option value="all">All Categories</option>
+          <option value="smart-caption">Smart Captions</option>
+          <option value="babecock">Babecock</option>
+          <option value="hypnococks">HypnoCocks</option>
+          <option value="upload">Uploads</option>
+        </select>
+        <input
+          type="text"
+          placeholder="Search..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      {loading ? (
+        <p>Loading...</p>
+      ) : (
+        <div className="grid">
+          {media.map((file) => (
+            <div key={file.id}>
+              <img src={file.url} alt={file.originalName} />
+              <p>{file.originalName}</p>
+              <p>{file.category}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+## Notes
+
+- Media is sorted by creation date in descending order (newest first)
+- The endpoint performs automatic backfill on every request to keep database in sync with storage
+- Metadata files (`.json`) are automatically excluded from results
+- Only valid media files (jpg, jpeg, png, gif, webp, mp4, mov, webm) are included
+- Enrichment is queued automatically for backfilled items but happens asynchronously

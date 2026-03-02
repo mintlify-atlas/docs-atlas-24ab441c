@@ -1,0 +1,738 @@
+---
+title: 'Environment Setup'
+description: 'Complete guide to configuring environment variables and API integrations for JOIP'
+---
+
+## Environment File Setup
+
+JOIP uses environment variables for configuration. All variables are loaded from a `.env` file in the project root.
+
+<Steps>
+  <Step title="Create Environment File">
+    ```bash
+    cp .env.example .env
+    ```
+  </Step>
+
+  <Step title="Edit Configuration">
+    Open `.env` in your editor and configure the required variables below.
+  </Step>
+
+  <Step title="Restart Server">
+    ```bash
+    npm run dev
+    ```
+    Changes to `.env` require a server restart.
+  </Step>
+</Steps>
+
+<Warning>
+  **Never commit `.env` files to version control.** The `.gitignore` file should already exclude them.
+</Warning>
+
+## Core Configuration
+
+### Database Connection
+
+<ParamField path="DATABASE_URL" type="string" required>
+  PostgreSQL connection string in URI format.
+
+  ```bash
+  DATABASE_URL="postgresql://username:password@host:5432/database"
+  ```
+
+  **Examples:**
+  - Local: `postgresql://postgres:password@localhost:5432/joip_dev`
+  - Supabase: `postgresql://postgres:[password]@db.[project].supabase.co:5432/postgres`
+  - Neon: `postgresql://[user]:[password]@[host].neon.tech/[database]`
+
+  <Tip>
+    For production, enable SSL by appending `?sslmode=require` to the connection string.
+  </Tip>
+</ParamField>
+
+### Session Management
+
+<ParamField path="SESSION_SECRET" type="string" required>
+  Secret key for signing session cookies. Must be a strong random string.
+
+  ```bash
+  SESSION_SECRET="your_session_secret_key"
+  ```
+
+  **Generate securely:**
+  ```bash
+  openssl rand -hex 32
+  ```
+
+  <Warning>
+    Use a different secret for development and production. Changing this will invalidate all existing sessions.
+  </Warning>
+</ParamField>
+
+### Application Settings
+
+<ParamField path="NODE_ENV" type="string" default="development">
+  Application environment mode.
+
+  ```bash
+  NODE_ENV="development"  # or "production"
+  ```
+
+  **Effects:**
+  - `development`: Enables Vite HMR, verbose logging, local auth
+  - `production`: Serves from `dist/`, minified assets, Replit OIDC
+</ParamField>
+
+<ParamField path="PORT" type="number" default={5000}>
+  Server port number.
+
+  ```bash
+  PORT=5000
+  ```
+
+  <Note>
+    Replit automatically proxies this port. The default is always 5000.
+  </Note>
+</ParamField>
+
+<ParamField path="JOIP_INTERNAL_PORT" type="number" optional>
+  Optional override for internal localhost callbacks/proxy calls.
+
+  ```bash
+  # JOIP_INTERNAL_PORT=5000
+  ```
+
+  Defaults to `PORT` when omitted. Only needed for special reverse proxy setups.
+</ParamField>
+
+<ParamField path="UPLOAD_DIR" type="string" default="./uploads">
+  Directory for temporary file uploads.
+
+  ```bash
+  UPLOAD_DIR="./uploads"
+  ```
+
+  <Note>
+    **Deprecated**: JOIP now uses Supabase Storage exclusively. This setting is retained for backward compatibility but not actively used.
+  </Note>
+</ParamField>
+
+## Reddit Integration
+
+Required for Reddit-based sessions, Gaslighter, and Scroller features.
+
+<ParamField path="REDDIT_CLIENT_ID" type="string" required>
+  Reddit application client ID.
+
+  ```bash
+  REDDIT_CLIENT_ID="your_reddit_client_id"
+  ```
+
+  **How to get:**
+  1. Go to [https://www.reddit.com/prefs/apps](https://www.reddit.com/prefs/apps)
+  2. Click "Create App" or "Create Another App"
+  3. Choose "script" type
+  4. The client ID is shown under the app name
+</ParamField>
+
+<ParamField path="REDDIT_CLIENT_SECRET" type="string" required>
+  Reddit application client secret.
+
+  ```bash
+  REDDIT_CLIENT_SECRET="your_reddit_client_secret"
+  ```
+
+  Found in the same location as the client ID.
+</ParamField>
+
+## AI Services
+
+### Caption Generation
+
+Choose one or both providers for AI caption generation:
+
+<ParamField path="OPENROUTER_API_KEY" type="string" recommended>
+  OpenRouter API key for AI caption generation (recommended).
+
+  ```bash
+  OPENROUTER_API_KEY="sk-or-v1-your_openrouter_api_key"
+  ```
+
+  **Features:**
+  - Access to Gemini 2.5 Pro and Flash models
+  - Automatic fallback between models
+  - Used for contextual/narrative captions in Manual Editor
+  - Used for Smart Captions with themed prompts
+
+  **Get your key:**
+  1. Sign up at [https://openrouter.ai](https://openrouter.ai)
+  2. Navigate to Settings → API Keys
+  3. Create a new key
+
+  **Models used:**
+  - Manual Editor: `google/gemini-2.5-pro` (fallback: `gemini-2.5-flash-lite`)
+  - Smart Captions: `gemini-2.5-flash-lite`
+</ParamField>
+
+<ParamField path="OPENAI_API_KEY" type="string" optional>
+  OpenAI API key as alternative to OpenRouter.
+
+  ```bash
+  OPENAI_API_KEY="sk-your_openai_api_key"
+  ```
+
+  The system will use OpenRouter if available, falling back to OpenAI.
+</ParamField>
+
+### AI Image Services
+
+<ParamField path="XAI_API_KEY" type="string" optional>
+  xAI API key for AI Undress feature (primary provider).
+
+  ```bash
+  XAI_API_KEY="xai-your_xai_api_key"
+  ```
+
+  **Get your key:**
+  - Visit [https://console.x.ai/](https://console.x.ai/)
+  - Generate an API key
+
+  **Model:**
+  - Uses `grok-imagine-image-pro` by default
+  - Override with `XAI_UNDRESS_MODEL`
+</ParamField>
+
+<ParamField path="XAI_UNDRESS_MODEL" type="string" default="grok-imagine-image-pro">
+  Optional xAI model override for AI Undress.
+
+  ```bash
+  XAI_UNDRESS_MODEL="grok-imagine-image-pro"
+  ```
+</ParamField>
+
+<ParamField path="FREEPIK_API_KEY" type="string" optional>
+  Freepik API key for AI Undress feature (fallback provider).
+
+  ```bash
+  FREEPIK_API_KEY="your_freepik_api_key"
+  ```
+
+  **Get your key:**
+  - Visit [https://www.freepik.com/developers/dashboard](https://www.freepik.com/developers/dashboard)
+  - Create an API key
+
+  **Model:**
+  - Uses Seedream 4.5 Edit
+  - Automatically used when xAI fails or is unavailable
+</ParamField>
+
+<ParamField path="UNDRESS_PRIMARY_PROVIDER" type="string" default="xai">
+  Select primary provider for AI Undress.
+
+  ```bash
+  UNDRESS_PRIMARY_PROVIDER="xai"  # or "freepik"
+  ```
+
+  **Options:**
+  - `xai`: Use xAI as primary, Freepik as fallback
+  - `freepik`: Use Freepik as primary, xAI as fallback
+</ParamField>
+
+<ParamField path="REPLICATE_API_TOKEN" type="string" optional>
+  Replicate API token (dormant/legacy provider).
+
+  ```bash
+  REPLICATE_API_TOKEN="r8_your_replicate_api_token"
+  ```
+
+  <Note>
+    This provider is dormant and kept for backward compatibility. The system uses xAI and Freepik.
+  </Note>
+</ParamField>
+
+## Cloud Storage
+
+Required for manual sessions, Media Vault, and file uploads.
+
+<ParamField path="SUPABASE_URL" type="string" required>
+  Supabase project URL.
+
+  ```bash
+  SUPABASE_URL="https://your-project.supabase.co"
+  ```
+
+  **Get from:**
+  1. [Supabase Dashboard](https://app.supabase.com)
+  2. Select your project
+  3. Settings → API → Project URL
+</ParamField>
+
+<ParamField path="SUPABASE_ANON_KEY" type="string" required>
+  Supabase anonymous (public) key.
+
+  ```bash
+  SUPABASE_ANON_KEY="your_supabase_anon_key"
+  ```
+
+  Found in the same location as the project URL under "Project API keys" → "anon public".
+
+  <Note>
+    This key is safe to use in client-side code. It respects Row Level Security (RLS) policies.
+  </Note>
+</ParamField>
+
+<ParamField path="SUPABASE_SERVICE_KEY" type="string" required>
+  Supabase service role (admin) key.
+
+  ```bash
+  SUPABASE_SERVICE_KEY="your_supabase_service_key"
+  ```
+
+  Found under "Project API keys" → "service_role".
+
+  <Warning>
+    **Never expose this key client-side.** It bypasses all RLS policies and has full admin access.
+  </Warning>
+</ParamField>
+
+### Storage Buckets
+
+The application automatically creates these buckets:
+
+- **user-media**: User uploads and manual session media
+  - Path structure: `users/{userId}/manual-sessions/{sessionId}/`
+- **general**: Community content and shared media
+
+<Tip>
+  Test storage connectivity with:
+  ```bash
+  curl http://localhost:5000/api/storage/status
+  ```
+</Tip>
+
+## External Services
+
+### Imgchest Integration
+
+<ParamField path="IMGCHEST_API_KEY" type="string" optional>
+  Imgchest API key for importing existing galleries.
+
+  ```bash
+  IMGCHEST_API_KEY="your_imgchest_api_key"
+  ```
+
+  Required only for the "Import JOIP" feature to import from Imgchest.
+</ParamField>
+
+## Replit Deployment
+
+These variables are automatically set by Replit. Only configure manually for custom deployments.
+
+<ParamField path="REPLIT_DOMAINS" type="string" auto>
+  Replit domain for the deployed app.
+
+  ```bash
+  REPLIT_DOMAINS="your-repl-domain.replit.dev"
+  ```
+
+  **Effects:**
+  - When set: Enables Replit OIDC authentication
+  - When unset: Uses local development auth strategy
+</ParamField>
+
+<ParamField path="REPL_ID" type="string" auto>
+  Unique Replit project identifier.
+
+  ```bash
+  REPL_ID="your_repl_id"
+  ```
+
+  Used for Replit OIDC configuration.
+</ParamField>
+
+<ParamField path="ISSUER_URL" type="string" default="https://identity.util.repl.co">
+  OIDC issuer URL for Replit authentication.
+
+  ```bash
+  ISSUER_URL="https://identity.util.repl.co"
+  ```
+</ParamField>
+
+<ParamField path="REPLIT_DEV_DOMAIN" type="string" auto>
+  Development domain (auto-populated by Replit).
+
+  ```bash
+  # REPLIT_DEV_DOMAIN="your-dev-domain.replit.dev"
+  ```
+</ParamField>
+
+<ParamField path="REPLIT_DB_URL" type="string" auto>
+  Replit database URL (auto-populated).
+
+  ```bash
+  # REPLIT_DB_URL="your-replit-db-url"
+  ```
+</ParamField>
+
+## Payment Integrations
+
+### Telegram Payments
+
+<ParamField path="TELEGRAM_BOT_TOKEN" type="string" optional>
+  Telegram bot token for Telegram Stars payments.
+
+  ```bash
+  TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
+  ```
+
+  Required together with `TELEGRAM_WEBHOOK_SECRET` to enable Telegram payment flow.
+</ParamField>
+
+<ParamField path="TELEGRAM_WEBHOOK_SECRET" type="string" optional>
+  Telegram webhook secret for payment verification.
+
+  ```bash
+  TELEGRAM_WEBHOOK_SECRET="your_telegram_webhook_secret"
+  ```
+</ParamField>
+
+<ParamField path="TELEGRAM_BOT_USERNAME" type="string" default="OfficialJoipBot">
+  Telegram bot username.
+
+  ```bash
+  TELEGRAM_BOT_USERNAME="OfficialJoipBot"
+  ```
+
+  Defaults to "OfficialJoipBot" when unset.
+</ParamField>
+
+<ParamField path="TELEGRAM_CHANNEL_ID" type="string" optional>
+  Telegram channel ID for membership features.
+
+  ```bash
+  TELEGRAM_CHANNEL_ID="-1001234567890"
+  ```
+
+  Only needed for channel invite/membership features.
+</ParamField>
+
+### Thirdweb Checkout
+
+<ParamField path="THIRDWEB_CLIENT_ID" type="string" optional>
+  Thirdweb client ID for crypto/card payments.
+
+  ```bash
+  THIRDWEB_CLIENT_ID="your_thirdweb_client_id"
+  ```
+
+  Required together with webhook secret to enable Thirdweb checkout flow.
+</ParamField>
+
+<ParamField path="THIRDWEB_WEBHOOK_SECRET" type="string" optional>
+  Thirdweb webhook secret for payment verification.
+
+  ```bash
+  THIRDWEB_WEBHOOK_SECRET="your_thirdweb_webhook_secret"
+  ```
+</ParamField>
+
+<ParamField path="THIRDWEB_SELLER_WALLET" type="string" optional>
+  Ethereum wallet address for receiving payments.
+
+  ```bash
+  THIRDWEB_SELLER_WALLET="0xyour_seller_wallet_address"
+  ```
+</ParamField>
+
+## Database Tuning
+
+Optional connection pool and performance settings.
+
+<CodeGroup>
+```bash Connection Pool
+# Maximum pool size
+DB_POOL_MAX=20
+
+# Minimum pool size  
+DB_POOL_MIN=2
+
+# Idle timeout in milliseconds
+DB_POOL_IDLE=10000
+
+# Connection timeout in seconds
+DB_CONNECT_TIMEOUT=10
+
+# Max connection lifetime in seconds
+DB_MAX_LIFETIME=3600
+```
+
+```bash Query Timeouts
+# Statement timeout in milliseconds
+DB_STATEMENT_TIMEOUT=30000
+
+# Query timeout in milliseconds
+DB_QUERY_TIMEOUT=20000
+```
+</CodeGroup>
+
+<Note>
+  These are optional. The application uses sensible defaults optimized for most deployments.
+</Note>
+
+## Logging Configuration
+
+<ParamField path="LOG_LEVEL" type="string" default="info">
+  Application logging verbosity.
+
+  ```bash
+  LOG_LEVEL="info"
+  ```
+
+  **Options:**
+  - `error`: Only errors
+  - `warn`: Warnings and errors
+  - `info`: General information (recommended)
+  - `debug`: Detailed debugging information
+</ParamField>
+
+## Complete Example
+
+<CodeGroup>
+```bash Development (.env)
+# Database
+DATABASE_URL="postgresql://postgres:password@localhost:5432/joip_dev"
+
+# Session
+SESSION_SECRET="generated-secure-random-string-here"
+
+# Application
+NODE_ENV="development"
+PORT=5000
+
+# Reddit
+REDDIT_CLIENT_ID="your_reddit_client_id"
+REDDIT_CLIENT_SECRET="your_reddit_client_secret"
+
+# AI - Caption Generation
+OPENROUTER_API_KEY="sk-or-v1-your_openrouter_key"
+
+# AI - Image Services
+XAI_API_KEY="xai-your_key"
+FREEPIK_API_KEY="your_freepik_key"
+UNDRESS_PRIMARY_PROVIDER="xai"
+
+# Cloud Storage
+SUPABASE_URL="https://yourproject.supabase.co"
+SUPABASE_ANON_KEY="your_anon_key"
+SUPABASE_SERVICE_KEY="your_service_key"
+
+# Optional
+IMGCHEST_API_KEY="your_imgchest_key"
+```
+
+```bash Production (Replit)
+# Database (use production database)
+DATABASE_URL="postgresql://user:pass@production-host:5432/joip_prod"
+
+# Session (strong random secret)
+SESSION_SECRET="production-secure-random-string"
+
+# Application
+NODE_ENV="production"
+
+# Replit (auto-set by platform)
+REPLIT_DOMAINS="joip.replit.app"
+REPL_ID="your-repl-id"
+ISSUER_URL="https://identity.util.repl.co"
+
+# Reddit
+REDDIT_CLIENT_ID="your_client_id"
+REDDIT_CLIENT_SECRET="your_client_secret"
+
+# AI Services
+OPENROUTER_API_KEY="sk-or-v1-production-key"
+XAI_API_KEY="xai-production-key"
+FREEPIK_API_KEY="production-freepik-key"
+
+# Storage
+SUPABASE_URL="https://production.supabase.co"
+SUPABASE_ANON_KEY="production_anon_key"
+SUPABASE_SERVICE_KEY="production_service_key"
+
+# Payments (optional)
+TELEGRAM_BOT_TOKEN="your_bot_token"
+TELEGRAM_WEBHOOK_SECRET="your_webhook_secret"
+THIRDWEB_CLIENT_ID="your_client_id"
+THIRDWEB_WEBHOOK_SECRET="your_webhook_secret"
+THIRDWEB_SELLER_WALLET="0x..."
+```
+</CodeGroup>
+
+## Validation
+
+The application validates environment configuration on startup via `server/environmentConfig.ts`.
+
+**Startup checks:**
+- Required variables are present
+- Database connection succeeds
+- Connection pool initializes
+- Supabase connectivity (if configured)
+
+**Validation errors:**
+```
+✗ DATABASE_URL must be set
+✗ SESSION_SECRET must be set
+✗ Supabase configuration incomplete
+```
+
+## Diagnostics
+
+### Check Storage Status
+
+```bash
+curl http://localhost:5000/api/storage/status
+```
+
+**Response:**
+```json
+{
+  "configured": true,
+  "reachable": true,
+  "buckets": ["user-media", "general"],
+  "testPassed": true
+}
+```
+
+**Error codes:**
+- `STORAGE_CONFIG_ERROR`: Missing environment variables
+- `STORAGE_UNREACHABLE`: Cannot connect to Supabase
+- `STORAGE_PREFLIGHT_FAILED`: Bucket test upload failed
+
+### Check Database Connection
+
+Verify the database is accessible:
+
+```bash
+psql "$DATABASE_URL" -c "SELECT version();"
+```
+
+### Test API Keys
+
+<AccordionGroup>
+  <Accordion title="Test Reddit API" icon="reddit">
+    Create a Reddit session and verify media loads. Check server logs for:
+    ```
+    ✓ Reddit API request successful
+    ✓ Fetched 100 posts from r/subreddit
+    ```
+  </Accordion>
+
+  <Accordion title="Test AI Caption Generation" icon="sparkles">
+    Try generating a caption in Smart Captions. Look for:
+    ```
+    ✓ OpenRouter request successful
+    ✓ Generated caption with gemini-2.5-flash-lite
+    ```
+  </Accordion>
+
+  <Accordion title="Test Supabase Storage" icon="cloud">
+    Upload an image in Media Vault. Verify:
+    ```
+    ✓ File uploaded to user-media bucket
+    ✓ Public URL generated
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Security Best Practices
+
+<Steps>
+  <Step title="Secret Management">
+    - Never commit `.env` files to Git
+    - Use different secrets for dev/staging/production
+    - Rotate API keys regularly (quarterly recommended)
+    - Store production secrets in secure vaults (Replit Secrets, AWS Secrets Manager)
+  </Step>
+
+  <Step title="API Key Security">
+    - **Never** expose service keys client-side
+    - Use `SUPABASE_ANON_KEY` for client operations only
+    - Keep `SUPABASE_SERVICE_KEY` server-side only
+    - Monitor API usage for anomalies
+  </Step>
+
+  <Step title="Database Security">
+    - Use SSL for production database connections
+    - Implement IP whitelisting where possible
+    - Use strong passwords (20+ characters)
+    - Enable connection pooling with max limits
+  </Step>
+
+  <Step title="Session Security">
+    - Use strong `SESSION_SECRET` (32+ bytes)
+    - Enable secure cookies in production (HTTPS only)
+    - Set appropriate session timeouts
+    - Implement CSRF protection
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Storage Errors in Manual Sessions" icon="warning">
+    **Symptom**: Manual session creation returns 503 with error codes
+
+    **Solutions:**
+    1. Verify all three Supabase variables are set
+    2. Check if Supabase project is paused (resume it)
+    3. Test with `/api/storage/status`
+    4. Review error code:
+       - `STORAGE_CONFIG_ERROR`: Add missing env vars
+       - `STORAGE_UNREACHABLE`: Check URL and network
+       - `STORAGE_PREFLIGHT_FAILED`: Verify bucket permissions
+  </Accordion>
+
+  <Accordion title="AI Features Not Working" icon="sparkles">
+    **Symptom**: Caption generation fails silently
+
+    **Solutions:**
+    1. Check API keys are valid (not expired)
+    2. Verify sufficient credits/quota on provider
+    3. Check server logs for specific errors
+    4. Test fallback: if OpenRouter fails, try OpenAI
+  </Accordion>
+
+  <Accordion title="Reddit API Rate Limiting" icon="reddit">
+    **Symptom**: 429 errors when fetching Reddit content
+
+    **Solutions:**
+    1. Built-in retry logic should handle this automatically
+    2. Reduce concurrent requests
+    3. Check if Reddit credentials are valid
+    4. Wait for rate limit to reset (typically 1 minute)
+  </Accordion>
+
+  <Accordion title="Database Connection Issues" icon="database">
+    **Symptom**: Cannot connect to database
+
+    **Solutions:**
+    1. Verify `DATABASE_URL` format is correct
+    2. Check database is running and accessible
+    3. For cloud databases: verify IP whitelist
+    4. Test connection: `psql "$DATABASE_URL"`
+    5. Check connection pool settings if hitting limits
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+    Create your first session with AI captions
+  </Card>
+
+  <Card title="API Reference" icon="code" href="/api-reference">
+    Explore all available API endpoints
+  </Card>
+</CardGroup>

@@ -1,0 +1,109 @@
+---
+title: "Share Session"
+api: "POST /api/sessions/:id/share"
+description: "Generate a unique share code and URL for a session"
+---
+
+## Authentication
+
+This endpoint requires authentication. Users can only share sessions they own.
+
+## Path Parameters
+
+<ParamField path="id" type="integer" required>
+  The unique session ID to share
+</ParamField>
+
+## Request Body
+
+<ParamField body="userId" type="string" optional>
+  Optional user ID for user-specific shares (rarely used)
+</ParamField>
+
+## Response
+
+Returns a share code, shareable URL, and referral code.
+
+<ResponseField name="shareCode" type="string">
+  UUID v4 share code for accessing the session
+</ResponseField>
+
+<ResponseField name="shareUrl" type="string">
+  Complete shareable URL including referral tracking
+</ResponseField>
+
+<ResponseField name="referralCode" type="string">
+  Your referral code embedded in the share URL
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.joip.io/api/sessions/123/share" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: connect.sid=YOUR_SESSION_COOKIE"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 - Success (New Share)
+{
+  "shareCode": "a3f8b2c1-9e4d-4a7b-8c3d-1f2e3a4b5c6d",
+  "shareUrl": "https://app.joip.io/shared/a3f8b2c1-9e4d-4a7b-8c3d-1f2e3a4b5c6d?r=abc123",
+  "referralCode": "abc123"
+}
+```
+
+```json 200 - Success (Existing Share)
+{
+  "shareCode": "a3f8b2c1-9e4d-4a7b-8c3d-1f2e3a4b5c6d",
+  "shareUrl": "https://app.joip.io/shared/a3f8b2c1-9e4d-4a7b-8c3d-1f2e3a4b5c6d?r=abc123",
+  "referralCode": "abc123"
+}
+```
+
+```json 400 - Invalid Session ID
+{
+  "message": "Invalid session ID"
+}
+```
+
+```json 403 - Forbidden
+{
+  "message": "You do not have permission to share this session"
+}
+```
+
+```json 404 - Not Found
+{
+  "message": "Session not found"
+}
+```
+
+```json 500 - Internal Server Error
+{
+  "message": "Failed to share session"
+}
+```
+</ResponseExample>
+
+## Behavior
+
+- If the session already has a share code, the existing code is returned
+- Creating a share automatically sets `isPublic: true` on the session
+- The share URL includes a referral parameter (`?r=`) for tracking
+- Share codes are UUID v4 format, providing unguessable URLs for privacy
+- Recipients can access the session at the provided URL without authentication for preview
+- Full playback requires authentication
+
+## Related Endpoints
+
+- `GET /api/shared/:shareCode/preview` - Public preview endpoint (no auth)
+- `GET /api/shared/:shareCode` - Full session access (requires auth)
+- `GET /api/shared/media/:shareCode` - Access shared session media
+
+## Notes
+
+- Activity is tracked for analytics
+- Referral codes help track user acquisition and sharing patterns
+- Share codes remain valid unless the session is deleted
+- Deleting a session automatically removes all associated share codes

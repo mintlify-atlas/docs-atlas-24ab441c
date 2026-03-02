@@ -1,0 +1,266 @@
+---
+title: 'Upload Media'
+openapi: 'POST /api/media/upload'
+---
+
+<Note>
+  This endpoint requires authentication. Users must be logged in to upload media files.
+</Note>
+
+## Overview
+
+Upload media files to your personal Media Vault. Files are stored in Supabase Storage with automatic organization into folders based on the source parameter.
+
+## Request
+
+### Headers
+
+- **Content-Type**: `multipart/form-data`
+- **Cookie**: Session authentication cookie
+
+### Form Data Parameters
+
+<ParamField body="file" type="file" required>
+  The media file to upload. Supported formats:
+  - **Images**: JPEG, PNG, GIF, WebP
+  - **Videos**: MP4, WebM
+  
+  **Size Limit**: Maximum 100MB per file (configurable via app settings)
+</ParamField>
+
+<ParamField body="source" type="string" default="general">
+  The source or category for organizing the uploaded file. Determines the folder structure in storage.
+  
+  **Options**:
+  - `general` - General uploads folder
+  - `profile` - Profile images folder
+  - `thumbnail` - Thumbnail images folder
+  - `smart-caption` - Smart Captions folder
+  - `babecock` - Babecock Studio folder
+  - `hypnococks` - HypnoCocks folder
+</ParamField>
+
+## File Upload Requirements
+
+### Allowed MIME Types
+
+```json
+[
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "video/mp4",
+  "video/webm"
+]
+```
+
+### Allowed File Extensions
+
+```json
+[".jpg", ".jpeg", ".png", ".gif", ".webp", ".mp4", ".webm"]
+```
+
+### Security Validations
+
+- Path traversal characters (`..`, `/`, `\\`) are not allowed in filenames
+- Special characters in filenames are sanitized and replaced with underscores
+- Filenames are prefixed with timestamp and source to prevent conflicts
+
+## Storage Integration
+
+### Supabase Storage Structure
+
+Files are organized in the `user-media` bucket with the following structure:
+
+```
+users/{userId}/{FolderName}/{source}-{timestamp}-{sanitizedFilename}
+```
+
+**Folder Mapping**:
+- `source: "general"` → `General/`
+- `source: "profile"` → `Profile/`
+- `source: "thumbnail"` → `Thumbnails/`
+- Other sources → `{Source}/`
+
+### Example File Path
+
+```
+users/user_123/General/general-1709856234567-my_image.jpg
+```
+
+## Response
+
+<ResponseField name="fileUrl" type="string" required>
+  The public URL of the uploaded file in Supabase Storage
+</ResponseField>
+
+<ResponseField name="fileName" type="string" required>
+  The unique filename generated for the uploaded file (includes timestamp and sanitization)
+</ResponseField>
+
+<ResponseField name="filePath" type="string" required>
+  The full storage path of the file in the format: `users/{userId}/{FolderName}/{fileName}`
+</ResponseField>
+
+<ResponseField name="source" type="string" required>
+  The source parameter that was provided in the request
+</ResponseField>
+
+### Success Response Example
+
+```json
+{
+  "fileUrl": "https://example.supabase.co/storage/v1/object/public/user-media/users/user_123/General/general-1709856234567-vacation_photo.jpg",
+  "fileName": "general-1709856234567-vacation_photo.jpg",
+  "filePath": "users/user_123/General/general-1709856234567-vacation_photo.jpg",
+  "source": "general"
+}
+```
+
+## Error Responses
+
+### 400 Bad Request
+
+**No file uploaded**:
+```json
+{
+  "message": "No file uploaded"
+}
+```
+
+**File too large**:
+```json
+{
+  "message": "File is too large to upload.",
+  "error": "FILE_TOO_LARGE",
+  "suggestion": "Please use a smaller file or check the upload size limit in settings. Consider compressing your image before uploading."
+}
+```
+
+**Invalid file type**:
+```json
+{
+  "message": "Upload failed: Invalid MIME type: application/pdf. Only JPEG, PNG, GIF, WebP images, and MP4/WebM videos are allowed.",
+  "error": "UPLOAD_ERROR",
+  "suggestion": "Please try again with a different file or contact support if the issue persists."
+}
+```
+
+### 500 Internal Server Error
+
+**Storage error**:
+```json
+{
+  "message": "Failed to upload to cloud storage",
+  "error": "STORAGE_ERROR",
+  "suggestion": "Please try again. If the issue persists, contact support."
+}
+```
+
+### 503 Service Unavailable
+
+**Storage not configured**:
+```json
+{
+  "message": "File storage is not configured. Please contact support.",
+  "error": "STORAGE_CONFIG_ERROR",
+  "suggestion": "File uploads are temporarily unavailable. Please try again later or contact support."
+}
+```
+
+## Example Usage
+
+### cURL
+
+```bash
+curl -X POST https://your-domain.com/api/media/upload \
+  -H "Cookie: connect.sid=your-session-cookie" \
+  -F "file=@/path/to/image.jpg" \
+  -F "source=general"
+```
+
+### JavaScript (Fetch API)
+
+```javascript
+const formData = new FormData();
+formData.append('file', fileInput.files[0]);
+formData.append('source', 'general');
+
+const response = await fetch('/api/media/upload', {
+  method: 'POST',
+  body: formData,
+  credentials: 'include'
+});
+
+const result = await response.json();
+console.log('Uploaded file:', result.fileUrl);
+```
+
+### React Example with Preview
+
+```jsx
+import { useState } from 'react';
+
+function MediaUploader() {
+  const [uploading, setUploading] = useState(false);
+  const [uploadedUrl, setUploadedUrl] = useState(null);
+
+  const handleUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('source', 'general');
+
+    try {
+      const response = await fetch('/api/media/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+
+      const result = await response.json();
+      setUploadedUrl(result.fileUrl);
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert(error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div>
+      <input 
+        type="file" 
+        onChange={handleUpload} 
+        accept="image/*,video/*"
+        disabled={uploading}
+      />
+      {uploading && <p>Uploading...</p>}
+      {uploadedUrl && (
+        <div>
+          <p>Upload successful!</p>
+          <img src={uploadedUrl} alt="Uploaded" style={{ maxWidth: '300px' }} />
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+## Notes
+
+- All uploads are tracked in user activity logs with action `media_uploaded`
+- The maximum upload size can be configured by admins via app settings
+- Files are automatically validated for MIME type and file extension
+- Duplicate filenames are prevented by adding timestamps
+- Uploaded files can be accessed immediately via the returned public URL

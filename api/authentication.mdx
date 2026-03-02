@@ -1,0 +1,406 @@
+---
+title: 'Authentication'
+description: 'Session-based authentication for the JOIP API'
+---
+
+## Authentication Overview
+
+The JOIP API uses **session-based authentication** with HTTP-only cookies for secure, stateless user sessions.
+
+## Authentication Methods
+
+JOIP supports two authentication strategies based on the deployment environment:
+
+### 1. Local Development (Default)
+
+For local development and testing, the API uses Passport.js with LocalStrategy.
+
+#### Test Accounts
+
+Three test accounts are available in development:
+
+```javascript
+// Admin accounts (development only)
+{ email: 'admin@example.com', password: 'admin123', role: 'admin' }
+{ email: 'dev@example.com', password: 'dev123', role: 'admin' }
+{ email: 'test@example.com', password: 'test123', role: 'admin' }
+```
+
+#### Login Request
+
+```bash
+curl -X POST http://localhost:5000/api/login \
+  -H "Content-Type: application/json" \
+  -c cookies.txt \
+  -d '{
+    "email": "test@example.com",
+    "password": "test123"
+  }'
+```
+
+**Response**: 302 Redirect with session cookie
+
+### 2. Replit OIDC (Production)
+
+When deployed on Replit, the API automatically uses Replit's OIDC authentication.
+
+Detection based on environment variable:
+```javascript
+const useReplitAuth = !!process.env.REPLIT_DOMAINS;
+```
+
+## Session Configuration
+
+### Session Storage
+
+Sessions are stored in PostgreSQL using `connect-pg-simple`:
+
+```javascript
+// From server/localAuth.ts:67-94
+const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+const pgStore = connectPg(session);
+const sessionStore = new pgStore({
+  conString: process.env.DATABASE_URL,
+  createTableIfMissing: true,
+  ttl: sessionTtl,
+  tableName: "sessions",
+});
+
+return session({
+  secret: process.env.SESSION_SECRET,
+  store: sessionStore,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: sessionTtl,
+    sameSite: 'lax', // CSRF protection
+  },
+});
+```
+
+### Cookie Properties
+
+- **httpOnly**: `true` - Prevents JavaScript access (XSS protection)
+- **secure**: `true` in production - HTTPS only
+- **maxAge**: 7 days (604,800,000 ms)
+- **sameSite**: `lax` - CSRF protection
+
+## Authentication Endpoints
+
+### POST /api/login
+
+Authenticate and receive session cookie.
+
+**Request**:
+```json
+{
+  "email": "test@example.com",
+  "password": "test123"
+}
+```
+
+**Success Response**: 302 Redirect to `/`
+
+**Error Response**:
+```json
+{
+  "message": "Invalid credentials"
+}
+```
+
+**Rate Limit**: 5 attempts per 15 minutes per IP (failed attempts only)
+
+### GET /api/login
+
+Client-side redirect endpoint (auto-login in development).
+
+### GET /api/dev-login
+
+Development-only endpoint for quick auto-login.
+
+**Response**: 302 Redirect to `/` with dev account session
+
+### GET /api/logout
+
+Terminate current session.
+
+**Response**: 302 Redirect to `/`
+
+### POST /api/auth/logout
+
+API-compatible logout endpoint.
+
+**Response**:
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+### GET /api/auth/user
+
+Get current authenticated user details.
+
+**Request**:
+```bash
+curl -X GET http://localhost:5000/api/auth/user \
+  -b cookies.txt
+```
+
+**Response**:
+```json
+{
+  "id": "local-test",
+  "email": "test@example.com",
+  "firstName": "test",
+  "lastName": "User",
+  "role": "admin",
+  "isActive": true,
+  "ageVerified": false,
+  "credits": {
+    "balance": 1000,
+    "tier": "free",
+    "isLowBalance": false,
+    "nextAllocationDate": "2026-03-09T10:30:00.000Z"
+  },
+  "createdAt": "2026-03-02T10:30:00.000Z"
+}
+```
+
+**Error Response** (401):
+```json
+{
+  "message": "Unauthorized"
+}
+```
+
+## Authentication Middleware
+
+Protected endpoints use the `isAuthenticated` middleware:
+
+```javascript
+// From server/localAuth.ts:573-581
+export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  if (!getUserIdOrNull(req)) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
+};
+```
+
+## User ID Extraction
+
+The API uses a consistent method to extract user IDs from requests:
+
+```javascript
+// From server/localAuth.ts:39-56
+function getUserId(req: any): string {
+  // Local auth user with direct ID
+  if (req.user?.id) {
+    return req.user.id;
+  }
+  
+  // Replit OIDC claims structure
+  if (req.user?.claims?.sub) {
+    return req.user.claims.sub;
+  }
+  
+  // Direct sub on user object
+  if (req.user?.sub) {
+    return req.user.sub;
+  }
+  
+  throw new Error('Unable to extract user ID from request');
+}
+```
+
+## Making Authenticated Requests
+
+### Using cURL
+
+1. **Login and save cookies**:
+```bash
+curl -X POST http://localhost:5000/api/login \
+  -H "Content-Type: application/json" \
+  -c cookies.txt \
+  -d '{"email":"test@example.com","password":"test123"}'
+```
+
+2. **Use cookies in subsequent requests**:
+```bash
+curl -X GET http://localhost:5000/api/sessions \
+  -b cookies.txt
+```
+
+### Using JavaScript (fetch)
+
+```javascript
+// Login
+await fetch('/api/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include', // Important: Include cookies
+  body: JSON.stringify({
+    email: 'test@example.com',
+    password: 'test123'
+  })
+});
+
+// Authenticated request
+const response = await fetch('/api/sessions', {
+  credentials: 'include' // Include cookies
+});
+const sessions = await response.json();
+```
+
+### Using Python (requests)
+
+```python
+import requests
+
+# Create session to persist cookies
+session = requests.Session()
+
+# Login
+login_data = {
+    "email": "test@example.com",
+    "password": "test123"
+}
+session.post('http://localhost:5000/api/login', json=login_data)
+
+# Authenticated request
+response = session.get('http://localhost:5000/api/sessions')
+sessions = response.json()
+```
+
+## Session Lifecycle
+
+### User Creation Flow
+
+When a user logs in for the first time:
+
+```javascript
+// From server/localAuth.ts:98-147
+async function upsertLocalUser(userId, userData, pendingReferral) {
+  const existingUser = await storage.getUser(userId);
+  const isNewUser = !existingUser;
+
+  const user = await storage.upsertUser({
+    id: userId,
+    email: userData.email,
+    firstName: userData.firstName || null,
+    lastName: userData.lastName || null,
+    role: userData.role || existingUser?.role || "user",
+    isActive: existingUser?.isActive ?? true,
+  });
+
+  // Initialize credits for new users
+  if (isNewUser) {
+    await creditService.initializeUserCredits(userId);
+    
+    // Process referral if code provided
+    if (pendingReferral?.code) {
+      await referralService.processReferral(
+        userId,
+        pendingReferral.code,
+        pendingReferral.source,
+        pendingReferral.sourceId
+      );
+    }
+  }
+
+  return user;
+}
+```
+
+### Activity Tracking
+
+Successful logins are tracked:
+
+```javascript
+// From server/localAuth.ts:228
+await trackLogin(userId);
+```
+
+## Security Best Practices
+
+### Password Security
+
+<Warning>
+  In production, passwords should be hashed using bcrypt. The current implementation uses plaintext passwords for development testing only.
+</Warning>
+
+```javascript
+// Production implementation should use:
+import * as bcrypt from 'bcrypt';
+
+// Hash password on registration
+const hashedPassword = await bcrypt.hash(password, 10);
+
+// Verify password on login
+const isValid = await bcrypt.compare(password, hashedPassword);
+```
+
+### Environment Variables
+
+Required for authentication:
+
+```bash
+# Required in production
+SESSION_SECRET=your-random-secret-key-here
+
+# Database connection
+DATABASE_URL=postgresql://user:pass@host:port/db
+
+# Replit-specific (automatic on Replit)
+REPLIT_DOMAINS=your-app.repl.co
+REPL_ID=your-repl-id
+ISSUER_URL=https://replit.com
+```
+
+### CSRF Protection
+
+Sessions use `sameSite: 'lax'` cookie policy:
+- Prevents CSRF attacks from external sites
+- Allows cookies on top-level GET navigations
+- Blocks cookies on cross-site POST requests
+
+### XSS Protection
+
+- **httpOnly cookies**: Session cookies cannot be accessed via JavaScript
+- **Input sanitization**: All user inputs are sanitized before storage
+- **Output encoding**: Data is properly encoded in responses
+
+## Common Authentication Errors
+
+### 401 Unauthorized
+
+**Cause**: Missing or invalid session cookie
+
+**Solution**:
+1. Ensure you're logged in
+2. Include `credentials: 'include'` in fetch requests
+3. Check cookie expiration (7 days)
+
+### 403 Forbidden
+
+**Cause**: Authenticated but lacking required permissions
+
+**Solution**: Check user role and endpoint access requirements
+
+### Invalid credentials
+
+**Cause**: Wrong email or password
+
+**Solution**: Verify credentials match test accounts
+
+## Next Steps
+
+- [Rate Limiting](/api/rate-limiting) - Understand rate limits per endpoint
+- [Error Handling](/api/errors) - Handle authentication errors
+- [API Introduction](/api/introduction) - Explore available endpoints

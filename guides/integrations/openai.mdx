@@ -1,0 +1,612 @@
+---
+title: OpenAI/OpenRouter Integration
+description: Configure AI caption generation using OpenAI or OpenRouter
+icon: wand-magic-sparkles
+---
+
+JOIP uses AI models to generate explicit NSFW captions for images. You can use either **OpenAI** (direct) or **OpenRouter** (multi-model gateway) for caption generation.
+
+## Overview
+
+The caption generation system supports:
+- **Smart Captions**: Detailed AI captions for uploaded images (50-400 characters)
+- **Session Captions**: Short captions for slideshow playback (50-150 characters)
+- **Manual Captions**: Contextual captions that maintain narrative continuity
+- **Batch Generation**: Generate captions for multiple slides at once
+
+<Note>
+  **OpenRouter is recommended** for production use as it provides access to multiple models, better rate limits, and fallback options.
+</Note>
+
+## Prerequisites
+
+Choose one of the following:
+
+<Tabs>
+  <Tab title="OpenRouter (Recommended)">
+    - OpenRouter account at [openrouter.ai](https://openrouter.ai)
+    - API key from [OpenRouter Keys](https://openrouter.ai/keys)
+    - Credits loaded (pay-as-you-go)
+  </Tab>
+
+  <Tab title="OpenAI (Direct)">
+    - OpenAI account at [platform.openai.com](https://platform.openai.com)
+    - API key from [API Keys](https://platform.openai.com/api-keys)
+    - Active billing setup
+  </Tab>
+</Tabs>
+
+## Setup Steps
+
+<Steps>
+  <Step title="Get API Key">
+    <Tabs>
+      <Tab title="OpenRouter">
+        1. Sign up at [openrouter.ai](https://openrouter.ai)
+        2. Navigate to [Keys](https://openrouter.ai/keys)
+        3. Click "Create Key"
+        4. Name it (e.g., "JOIP Production")
+        5. Copy the key (starts with `sk-or-`)
+      </Tab>
+
+      <Tab title="OpenAI">
+        1. Sign up at [platform.openai.com](https://platform.openai.com/signup)
+        2. Go to [API Keys](https://platform.openai.com/api-keys)
+        3. Click "Create new secret key"
+        4. Name it and copy immediately (shown once)
+      </Tab>
+    </Tabs>
+
+    <Warning>
+      API keys are shown only once. Save them securely immediately after creation.
+    </Warning>
+  </Step>
+
+  <Step title="Configure Environment">
+    Add your key to `.env`:
+
+    <CodeGroup>
+    ```bash OpenRouter
+    OPENROUTER_API_KEY=sk-or-v1-abc123...
+    ```
+
+    ```bash OpenAI (Fallback)
+    OPENAI_API_KEY=sk-abc123...
+    ```
+    </CodeGroup>
+
+    <Note>
+      If both are set, **OpenRouter takes precedence**. OpenAI is used as fallback only.
+    </Note>
+  </Step>
+
+  <Step title="Choose Model (OpenRouter Only)">
+    Configure which AI model to use for caption generation:
+
+    <CodeGroup>
+    ```bash Default (Google Gemini Flash)
+    # No configuration needed - uses gemini-2.0-flash-exp by default
+    ```
+
+    ```bash Custom Model
+    OPENROUTER_MODEL_ID=google/gemini-2.5-pro
+    ```
+    </CodeGroup>
+
+    **Recommended Models**:
+    - `google/gemini-2.0-flash-exp` - Fast, cheap, good quality (default)
+    - `google/gemini-2.5-pro` - Highest quality, contextual understanding
+    - `anthropic/claude-3.5-sonnet` - Excellent balance of speed and quality
+    - `openai/gpt-4o` - OpenAI's latest, reliable
+
+    <Warning>
+      Only **vision-capable models** work for caption generation. JOIP validates this on startup.
+    </Warning>
+  </Step>
+
+  <Step title="Verify Configuration">
+    Start the server and check logs:
+
+    <CodeGroup>
+    ```bash Success
+    [openai] Using OpenRouter with model: google/gemini-2.0-flash-exp
+    [openai] OpenRouter API key validated
+    ```
+
+    ```bash Failure  
+    [error] OpenRouter API key is invalid or expired
+    [error] Model google/gemini-2.5-pro does not support vision
+    ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+## Implementation Details
+
+### Caption Generation Architecture
+
+JOIP uses a sophisticated prompting system for NSFW content:
+
+<CodeGroup>
+```typescript Master System Prompt
+const MASTER_SYSTEM_PROMPT = `You are an UNCENSORED explicit adult caption generator. 
+Create raw, filthy captions that feel like REAL dirty talk - not polished writing.
+
+CRITICAL - PERSPECTIVE:
+- The PERSON IN THE IMAGE is SPEAKING the caption TO the viewer
+- She's talking directly to whoever is looking at/stroking to her image
+- The viewer is addressed, commanded, teased, degraded, humiliated
+
+CONTENT INTENSITY:
+- Be EXPLICIT: cock, pussy, fuck, cum, balls, stroke, edge, whore, slut, etc.
+- NO censoring, NO softening, NO holding back
+- Match the theme's psychological intensity EXACTLY
+
+OUTPUT: Just the raw caption. No quotes, no labels, no formatting.`;
+```
+</CodeGroup>
+
+### Context-Aware Generation
+
+For manual sessions, captions consider surrounding context:
+
+<CodeGroup>
+```typescript Contextual Generation
+interface CaptionContext {
+  sessionTitle?: string;
+  index: number;                    // Current slide position
+  total: number;                    // Total slides
+  previousCaptions?: string[];      // Last 3 captions for continuity
+  nextCaptions?: string[];          // Next 3 captions for flow
+  userSteering?: string;            // Custom instructions
+  sessionStage?: 'new_session' | 'existing_session';
+}
+
+// Example usage
+const caption = await generateContextualManualCaption(imageUrl, {
+  sessionTitle: "Dominant Femdom Session",
+  index: 5,
+  total: 20,
+  previousCaptions: [
+    "Good boy, you're learning to obey...",
+    "Now edge for me. Don't you dare cum.",
+    "That's it, slower. I control your pleasure."
+  ],
+  nextCaptions: [
+    "You want to cum so badly, don't you?",
+    "Beg me. Let me hear how desperate you are."
+  ],
+  userSteering: "Build tension, more teasing, less commands"
+});
+```
+</CodeGroup>
+
+### Theme System
+
+JOIP provides pre-built caption themes:
+
+<Tabs>
+  <Tab title="JOI (Jerk Off Instruction)">
+    Dominant, teasing control with explicit edging/denial commands.
+
+    <CodeGroup>
+    ```typescript Example
+    "Stroke faster. Don't stop until I tell you to. 
+    You're mine to control."
+    ```
+    </CodeGroup>
+  </Tab>
+
+  <Tab title="Forced-Bi">
+    Manipulative coercion with "for me so it's not gay" framing.
+
+    <CodeGroup>
+    ```typescript Example
+    "You'll suck that cock for me, won't you? 
+    It doesn't count if you're doing it because I told you to."
+    ```
+    </CodeGroup>
+  </Tab>
+
+  <Tab title="Beta/Humiliation">
+    Contempt, mockery, social inferiority framing.
+
+    <CodeGroup>
+    ```typescript Example
+    "Look at you, pathetic little beta. 
+    Real men don't beg like this."
+    ```
+    </CodeGroup>
+  </Tab>
+
+  <Tab title="CBT (Cock & Ball Torture)">
+    Sadistic control with specific pain-focused commands.
+
+    <CodeGroup>
+    ```typescript Example
+    "Slap your balls. 10 times. Now. 
+    I want to hear you whimper."
+    ```
+    </CodeGroup>
+  </Tab>
+
+  <Tab title="Cuckold">
+    Comparison to superior partners, observer/cleanup dynamic.
+
+    <CodeGroup>
+    ```typescript Example
+    "He's so much bigger than you. 
+    Watch how a real man fucks me."
+    ```
+    </CodeGroup>
+  </Tab>
+
+  <Tab title="Custom">
+    User-defined prompts with full creative control.
+
+    <CodeGroup>
+    ```typescript Example
+    customPrompt: "Focus on worship and devotion, 
+    reference her specific outfit and pose"
+    ```
+    </CodeGroup>
+  </Tab>
+</Tabs>
+
+### Gemini Safety Settings
+
+For Google Gemini models, JOIP disables content filtering:
+
+<CodeGroup>
+```typescript Safety Configuration
+const GEMINI_SAFETY_SETTINGS = [
+  { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+];
+
+// Applied automatically for gemini models
+if (isGeminiModel(modelId)) {
+  requestBody.safety_settings = GEMINI_SAFETY_SETTINGS;
+}
+```
+</CodeGroup>
+
+<Note>
+  Without these settings, Gemini returns empty responses for NSFW content.
+</Note>
+
+## API Usage Examples
+
+### Generate Smart Caption
+
+<CodeGroup>
+```typescript Basic Generation
+import { generateCustomCaption } from './openai';
+
+const caption = await generateCustomCaption(
+  'https://example.com/image.jpg',  // Image URL
+  'Focus on the outfit and pose',   // Custom prompt (optional)
+  'joi',                             // Theme (optional)
+  'smart_captions'                   // Context: smart_captions | session | other
+);
+
+console.log(caption);
+// "That tight dress... you can't stop staring, can you? 
+//  Edge for me while you imagine what's underneath."
+```
+</CodeGroup>
+
+### Generate Session Caption
+
+<CodeGroup>
+```typescript Session Playback
+import { generateCaption } from './openai';
+
+// Short captions for 2-7 second display
+const caption = await generateCaption(
+  imageUrl,
+  'Post title from Reddit',  // Optional
+  'gonewild'                 // Subreddit context
+);
+
+console.log(caption);
+// "Stroke faster. You know you can't resist."
+```
+</CodeGroup>
+
+### Generate Contextual Caption
+
+<CodeGroup>
+```typescript Manual Session
+import { generateContextualManualCaption } from './openai';
+
+const caption = await generateContextualManualCaption(imageUrl, {
+  sessionTitle: "Edging Challenge",
+  index: 10,
+  total: 25,
+  previousCaptions: [
+    "You're doing so well. Keep edging for me.",
+    "Don't cum yet. I didn't give you permission."
+  ],
+  userSteering: "Increase intensity, add countdown"
+});
+
+// Maintains narrative flow and user preferences
+```
+</CodeGroup>
+
+### Batch Generation
+
+<CodeGroup>
+```typescript Generate All Captions
+// For manual session editor
+const captions = await Promise.all(
+  slides.map((slide, index) => 
+    generateContextualManualCaption(slide.imageUrl, {
+      index,
+      total: slides.length,
+      previousCaptions: slides
+        .slice(Math.max(0, index - 3), index)
+        .map(s => s.caption),
+      nextCaptions: slides
+        .slice(index + 1, index + 4)
+        .map(s => s.caption)
+    })
+  )
+);
+```
+</CodeGroup>
+
+## Media Compatibility
+
+JOIP validates media before generation:
+
+| Format | Supported | Max Size | Notes |
+|--------|-----------|----------|-------|
+| JPEG | ✅ Yes | 20MB | Recommended |
+| PNG | ✅ Yes | 20MB | Recommended |
+| WebP | ✅ Yes | 20MB | Recommended |
+| GIF | ❌ No | - | Static images only |
+| Video | ❌ No | - | Extract frame first |
+
+<CodeGroup>
+```typescript Media Check
+async function checkMediaCompatibility(imageUrl: string): Promise<void> {
+  // Check for animated GIFs
+  if (imageUrl.toLowerCase().includes('.gif')) {
+    throw new Error(
+      'Animated GIFs are not supported. Use static images (JPEG, PNG, WebP).'
+    );
+  }
+  
+  // Check file size (OpenRouter has 21MB limit)
+  const response = await fetch(imageUrl, { method: 'HEAD' });
+  const contentLength = response.headers.get('content-length');
+  
+  if (contentLength) {
+    const fileSizeMB = parseInt(contentLength) / (1024 * 1024);
+    if (fileSizeMB > 20) {
+      throw new Error(
+        `Image too large (${fileSizeMB.toFixed(1)}MB). Max 20MB.`
+      );
+    }
+  }
+}
+```
+</CodeGroup>
+
+## Error Handling
+
+### Automatic Retries
+
+JOIP automatically retries failed generations:
+
+<CodeGroup>
+```typescript Retry Logic
+const maxAttempts = 3;
+for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+  try {
+    return await generateCaptionInternal(...);
+  } catch (error) {
+    // Retry on content filtering or empty responses
+    const isRetriable = 
+      error.message === 'CONTENT_POLICY_REJECTION' ||
+      error.message === 'EMPTY_RESPONSE_CONTENT_FILTERED';
+    
+    if (isRetriable && attempt < maxAttempts) {
+      await new Promise(r => setTimeout(r, 500));
+      continue;
+    }
+    throw error;
+  }
+}
+
+// Fallback after all attempts
+return "Ready to play? Let's see how long you can last...";
+```
+</CodeGroup>
+
+### Common Error Codes
+
+<AccordionGroup>
+  <Accordion title="401 Unauthorized">
+    **Cause**: Invalid or expired API key
+
+    **Solution**:
+    - Verify key in `.env` matches your dashboard
+    - Check for spaces or quotes around the key
+    - Regenerate key if compromised
+    - Restart server after updating
+  </Accordion>
+
+  <Accordion title="429 Rate Limited">
+    **Cause**: Too many requests
+
+    **Solution**:
+    - OpenRouter: Check rate limits at [openrouter.ai/docs](https://openrouter.ai/docs)
+    - OpenAI: Upgrade tier for higher limits
+    - Implement user-level throttling
+    - Add delays between batch generations
+  </Accordion>
+
+  <Accordion title="400 Bad Request">
+    **Cause**: Invalid request parameters
+
+    **Solution**:
+    - Check image URL is accessible
+    - Verify image size < 20MB
+    - Ensure model supports vision
+    - Review error message for specifics
+  </Accordion>
+
+  <Accordion title="Empty Response / Content Filtered">
+    **Cause**: Model refuses to generate NSFW content
+
+    **Solution**:
+    - Use Google Gemini models (best NSFW support)
+    - Verify safety settings are applied
+    - Try alternative model if issue persists
+    - Check if prompt is too explicit (ironically)
+  </Accordion>
+</AccordionGroup>
+
+## Cost Optimization
+
+### Model Pricing (OpenRouter)
+
+| Model | Input ($/1M tokens) | Output ($/1M tokens) | Quality |
+|-------|---------------------|----------------------|---------|
+| gemini-2.0-flash-exp | Free | Free | Good |
+| gemini-2.5-flash-lite | $0.01 | $0.04 | Good |
+| gemini-2.5-pro | $1.00 | $4.00 | Excellent |
+| claude-3.5-sonnet | $3.00 | $15.00 | Excellent |
+| gpt-4o | $2.50 | $10.00 | Very Good |
+
+<Note>
+  Prices are approximate. Check [OpenRouter Pricing](https://openrouter.ai/models) for current rates.
+</Note>
+
+### Tips to Reduce Costs
+
+1. **Use Flash Models**: `gemini-2.0-flash-exp` is free and high quality
+2. **Cache Results**: JOIP caches captions in IndexedDB (24hr TTL)
+3. **Batch Wisely**: Generate all captions at once vs. one-by-one
+4. **Optimize Prompts**: Shorter prompts = lower input costs
+5. **Set Max Tokens**: Limit output length to reduce costs
+
+## Advanced Configuration
+
+### Custom Model Parameters
+
+<CodeGroup>
+```typescript Temperature & Sampling
+const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  method: 'POST',
+  body: JSON.stringify({
+    model: modelId,
+    messages: [...],
+    
+    // Creativity settings
+    temperature: 1.15,      // Higher = more creative (0-2)
+    top_p: 0.9,            // Nucleus sampling (0-1)
+    
+    // Repetition penalties
+    frequency_penalty: 0.5, // Reduce word repetition
+    presence_penalty: 0.4,  // Encourage new topics
+    
+    // Output control
+    max_tokens: 500,        // Limit response length
+  })
+});
+```
+</CodeGroup>
+
+### Enable Reasoning (Extended Thinking)
+
+For complex contextual captions:
+
+<CodeGroup>
+```bash .env
+OPENROUTER_REASONING_ENABLED=true
+
+# Optional: Set effort level (low/medium/high)
+OPENROUTER_REASONING_EFFORT=medium
+```
+</CodeGroup>
+
+<Warning>
+  Reasoning mode increases costs significantly. Use only for contextual manual captions.
+</Warning>
+
+## Troubleshooting
+
+### Debug Logging
+
+<CodeGroup>
+```typescript Enable Debug Logs
+// In server/logger.ts, set level to 'debug'
+export const logger = createLogger({
+  level: 'debug'
+});
+
+// Logs will show:
+// [openai] Generating caption with OpenRouter model: google/gemini-2.5-pro
+// [openai] Caption properly grounded with subtle visual reference
+```
+</CodeGroup>
+
+### Test Caption Generation
+
+<CodeGroup>
+```bash cURL Test
+curl -X POST http://localhost:5000/api/captions/generate \
+  -H "Content-Type: application/json" \
+  -H "Cookie: your-session-cookie" \
+  -d '{
+    "imageUrl": "https://example.com/test.jpg",
+    "customPrompt": "Test caption generation",
+    "theme": "joi"
+  }'
+```
+</CodeGroup>
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="API Key Security" icon="key">
+    - Store keys in `.env` only
+    - Never commit to version control
+    - Rotate keys periodically
+    - Use different keys per environment
+  </Card>
+
+  <Card title="Input Validation" icon="shield-check">
+    - Validate image URLs before API calls
+    - Block localhost/private IPs (SSRF protection)
+    - Enforce size limits (20MB max)
+    - Check content-type headers
+  </Card>
+
+  <Card title="Rate Limiting" icon="gauge">
+    - Implement user-level quotas
+    - Track API usage per user
+    - Add cooldowns for abuse prevention
+    - Monitor costs in real-time
+  </Card>
+
+  <Card title="Error Handling" icon="triangle-exclamation">
+    - Don't expose API errors to users
+    - Log detailed errors server-side
+    - Provide generic user-facing messages
+    - Implement graceful fallbacks
+  </Card>
+</CardGroup>
+
+## Related Resources
+
+- [OpenRouter Documentation](https://openrouter.ai/docs)
+- [OpenAI API Reference](https://platform.openai.com/docs/api-reference)
+- [Gemini Safety Settings](https://ai.google.dev/gemini-api/docs/safety-settings)
+- [Vision Model Comparison](https://openrouter.ai/models?modality=vision)

@@ -1,0 +1,225 @@
+---
+title: 'Welcome to JOIP'
+description: 'Create powerful multimedia slideshows with AI-generated captions, custom content, and advanced creation tools'
+---
+
+<img
+  className="block dark:hidden"
+  src="/images/hero-light.svg"
+  alt="JOIP Hero Light"
+/>
+<img
+  className="hidden dark:block"
+  src="/images/hero-dark.svg"
+  alt="JOIP Hero Dark"
+/>
+
+## What is JOIP?
+
+JOIP (Jerk Off Instruction Player) is a production-ready web application for creating and playing multimedia slideshows with AI-powered captions. Built with modern TypeScript architecture, it offers powerful tools for content creation, discovery, and community sharing.
+
+<CardGroup cols={2}>
+  <Card
+    title="Quick Start"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Get up and running in minutes with your first session
+  </Card>
+  <Card
+    title="Installation"
+    icon="download"
+    href="/installation"
+  >
+    Complete installation guide for local and production environments
+  </Card>
+  <Card
+    title="Environment Setup"
+    icon="gear"
+    href="/environment-setup"
+  >
+    Configure API keys and environment variables
+  </Card>
+  <Card
+    title="API Reference"
+    icon="code"
+    href="/api-reference"
+  >
+    Explore the complete API documentation
+  </Card>
+</CardGroup>
+
+## Core Features
+
+<AccordionGroup>
+  <Accordion title="Session Management" icon="play">
+    Create multimedia slideshows from Reddit content or personal uploads with customizable intervals, transitions, and AI-generated captions. Sessions can be shared publicly or kept private.
+
+    **Session Types:**
+    - **Reddit Sessions**: Automatically fetch content from subreddits
+    - **Manual Sessions**: Upload personal images with custom captions
+    - **Imported Sessions**: Import from Imgchest with preserved order
+  </Accordion>
+
+  <Accordion title="Smart Captions" icon="sparkles">
+    AI-powered caption generation with multiple themed prompts including JOI, Beta, Cuckold, CBT, and Forced Bi. Supports batch generation and custom prompts with contextual narrative continuity.
+
+    Features include:
+    - Multiple AI providers (OpenRouter, OpenAI)
+    - Client-side caption caching with 24-hour TTL
+    - Background caption pre-warming for reduced latency
+    - Custom prompt support with length and tone controls
+  </Accordion>
+
+  <Accordion title="Babecock Studio" icon="image">
+    Advanced image combination tool for creating split-screen compositions with automatic layout detection. Supports Reddit integration for sourcing images and direct uploads.
+
+    Capabilities:
+    - Automatic side-by-side or top-bottom arrangements
+    - Real-time preview with customizable layouts
+    - Smart pairing algorithm for optimal composition
+    - Remix functionality to swap images
+  </Accordion>
+
+  <Accordion title="Content Discovery" icon="compass">
+    **Gaslighter**: Interactive Reddit browser with content swapping between subreddits, autoscroll, and infinite loading.
+
+    **Scroller**: Enhanced Reddit browsing with customizable feeds, autoscroll speed controls, and favorite subreddit management.
+
+    **Community Feed**: Discover sessions and media shared by the community with filtering, search, and save-to-library features.
+  </Accordion>
+
+  <Accordion title="Media Vault" icon="folder">
+    Centralized storage for user-uploaded and generated content with cloud storage via Supabase. Features include:
+    - Bulk operations and downloads
+    - Public/private sharing with unique codes
+    - Usage tracking and statistics
+    - Automatic organization in user-specific subfolders
+  </Accordion>
+</AccordionGroup>
+
+## Technology Stack
+
+<CardGroup cols={2}>
+  <Card title="Frontend" icon="react">
+    **React 18** with TypeScript  
+    **Vite** for fast development  
+    **Tailwind CSS** + **Radix UI** components  
+    **TanStack React Query** for state management  
+    **React Hook Form** + **Zod** validation
+  </Card>
+  
+  <Card title="Backend" icon="server">
+    **Express.js** with TypeScript  
+    **Drizzle ORM** with PostgreSQL  
+    **Passport.js** authentication  
+    **Multer** + **Sharp** for image processing  
+    **OpenRouter/OpenAI** for AI features
+  </Card>
+  
+  <Card title="Database" icon="database">
+    **PostgreSQL** with comprehensive constraints  
+    **Neon** serverless PostgreSQL  
+    **Connection pooling** with health monitoring  
+    **36 total constraints** for data integrity
+  </Card>
+  
+  <Card title="Storage & Auth" icon="cloud">
+    **Supabase Storage** for cloud files  
+    **Replit OIDC** for production auth  
+    **Local development** strategy  
+    **Session management** with secure cookies
+  </Card>
+</CardGroup>
+
+## Key Capabilities
+
+<CardGroup cols={3}>
+  <Card title="AI Integration" icon="brain">
+    Multiple AI providers with automatic fallback, themed prompt engineering, and xAI image edits for advanced features
+  </Card>
+  
+  <Card title="Real-time Updates" icon="bolt">
+    Live analytics, comprehensive usage tracking, and audit logging for all user interactions
+  </Card>
+  
+  <Card title="Security" icon="shield">
+    Role-based access control, rate limiting with token bucket algorithm, and comprehensive input validation
+  </Card>
+  
+  <Card title="Scalability" icon="chart-line">
+    Connection pooling, health monitoring, and optimized database queries with indexes
+  </Card>
+  
+  <Card title="Developer API" icon="terminal">
+    Programmatic access to sessions, captions, and other features (Early Access)
+  </Card>
+  
+  <Card title="Community" icon="users">
+    Share sessions publicly, discover content, and save community creations to your library
+  </Card>
+</CardGroup>
+
+## Architecture Highlights
+
+The application follows a **monorepo structure** with shared TypeScript types between client and server:
+
+- **Centralized Schema**: All database schemas and validation in `shared/schema.ts` using Drizzle + Zod
+- **Storage Abstraction**: Database operations centralized in `server/storage.ts` implementing an `IStorage` interface
+- **Dynamic Authentication**: Replit OIDC for production, local strategy for development
+- **Cloud-First Storage**: Supabase Storage with automatic bucket initialization (no local filesystem dependency)
+- **Comprehensive Tracking**: All user interactions logged via `server/usageTracking.ts`
+
+<Note>
+  JOIP runs on **port 5000** by default. The server serves both the API (under `/api`) and the built client application in production.
+</Note>
+
+## Development Workflow
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server (port 5000)
+npm run dev
+
+# Build for production
+npm run build
+
+# Run production server
+npm start
+
+# Type checking
+npm run check
+
+# Apply database migrations
+npm run db:push
+```
+
+## Coming Soon
+
+<CardGroup cols={2}>
+  <Card title="Joip API" icon="plug">
+    Enhanced programmatic access to Smart Captions, Beta Censoring, and webhook support
+  </Card>
+  
+  <Card title="Mobile Apps" icon="mobile">
+    Native mobile applications for iOS and Android
+  </Card>
+</CardGroup>
+
+## Support & Resources
+
+<CardGroup cols={2}>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/your-repo">
+    View source code and contribute
+  </Card>
+  
+  <Card title="API Documentation" icon="book" href="/api-reference">
+    Complete API endpoint reference
+  </Card>
+</CardGroup>
+
+<Warning>
+  **Age Restriction**: JOIP is an adult (18+) application containing NSFW content. All documentation remains technical and avoids explicit content.
+</Warning>

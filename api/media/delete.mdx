@@ -1,0 +1,241 @@
+---
+title: 'Delete Media'
+openapi: 'DELETE /api/user/media/:id'
+---
+
+<Note>
+  This endpoint requires authentication. Users can only delete their own media files.
+</Note>
+
+## Overview
+
+Permanently delete a media file from both Supabase Storage and the database. This action cannot be undone.
+
+## Path Parameters
+
+<ParamField path="id" type="number" required>
+  The database ID of the media item to delete. You can get this from the `GET /api/user/media` endpoint.
+</ParamField>
+
+## Deletion Process
+
+### What Gets Deleted
+
+1. **File from Supabase Storage**: The actual media file is removed from the `user-media` bucket
+2. **Database Record**: The media record is removed from the `user_media` table
+3. **Community Copies** (if shared to community):
+   - Community media record in `community_media` table
+   - File from `general` bucket
+   - Associated tag assignments
+
+### Orphaned File Handling
+
+If the database record exists but the storage file is already deleted:
+- The database record is still removed
+- A warning is logged but the operation succeeds
+- The API returns a success response
+
+## Authorization
+
+- Users can **only delete their own media**
+- The endpoint verifies that `media.userId` matches the authenticated user's ID
+- Returns `404 Not Found` if media doesn't exist or belongs to another user
+
+## Response
+
+### Success Response
+
+<ResponseField name="message" type="string" required>
+  Confirmation message: "Media deleted successfully"
+</ResponseField>
+
+```json
+{
+  "message": "Media deleted successfully"
+}
+```
+
+## Error Responses
+
+### 400 Bad Request
+
+**Invalid media ID**:
+```json
+{
+  "message": "Invalid media ID"
+}
+```
+
+### 404 Not Found
+
+**Media not found or unauthorized**:
+```json
+{
+  "message": "Media not found"
+}
+```
+
+This error is returned when:
+- The media ID doesn't exist in the database
+- The media belongs to a different user
+
+### 500 Internal Server Error
+
+**Database deletion failed**:
+```json
+{
+  "message": "Failed to delete media from database"
+}
+```
+
+**General error**:
+```json
+{
+  "message": "Failed to delete media"
+}
+```
+
+## Activity Tracking
+
+Successful deletions are logged with:
+- **Action**: `media_deleted`
+- **Feature**: `media_gallery`
+- **Details**: Media ID and metadata
+
+## Example Usage
+
+### cURL
+
+```bash
+curl -X DELETE "https://your-domain.com/api/user/media/456" \
+  -H "Cookie: connect.sid=your-session-cookie"
+```
+
+### JavaScript (Fetch API)
+
+```javascript
+const mediaId = 456;
+
+const response = await fetch(`/api/user/media/${mediaId}`, {
+  method: 'DELETE',
+  credentials: 'include'
+});
+
+if (response.ok) {
+  const result = await response.json();
+  console.log(result.message); // "Media deleted successfully"
+} else {
+  const error = await response.json();
+  console.error('Delete failed:', error.message);
+}
+```
+
+### React Example with Confirmation
+
+```jsx
+import { useState } from 'react';
+
+function MediaDeleteButton({ mediaId, onDeleted }) {
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this media? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/user/media/${mediaId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+
+      const result = await response.json();
+      console.log(result.message);
+      onDeleted?.(mediaId);
+    } catch (error) {
+      console.error('Delete failed:', error);
+      alert(`Failed to delete media: ${error.message}`);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <button onClick={handleDelete} disabled={deleting}>
+      {deleting ? 'Deleting...' : 'Delete'}
+    </button>
+  );
+}
+```
+
+### Bulk Delete Example
+
+```javascript
+async function bulkDeleteMedia(mediaIds) {
+  const results = {
+    successful: [],
+    failed: []
+  };
+
+  for (const id of mediaIds) {
+    try {
+      const response = await fetch(`/api/user/media/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        results.successful.push(id);
+      } else {
+        const error = await response.json();
+        results.failed.push({ id, error: error.message });
+      }
+    } catch (error) {
+      results.failed.push({ id, error: error.message });
+    }
+  }
+
+  console.log(`Deleted ${results.successful.length} items`);
+  if (results.failed.length > 0) {
+    console.error(`Failed to delete ${results.failed.length} items:`, results.failed);
+  }
+
+  return results;
+}
+
+// Usage
+const idsToDelete = [456, 457, 458];
+const results = await bulkDeleteMedia(idsToDelete);
+```
+
+## Alternative Endpoint
+
+### DELETE /api/user/media/:fileName (Legacy)
+
+This legacy endpoint accepts a file path instead of database ID:
+
+```bash
+DELETE /api/user/media/Captions/caption-1709856234567-beach.jpg
+```
+
+**Differences**:
+- Accepts file path relative to `users/{userId}/`
+- Looks up database record by `filePath`
+- Same deletion behavior otherwise
+
+**Recommendation**: Use the ID-based endpoint (`DELETE /api/user/media/:id`) for better reliability and consistency.
+
+## Notes
+
+- Deletion is permanent and cannot be undone
+- Both storage and database records are deleted
+- If the media was shared to community, the community copy is also removed
+- The endpoint gracefully handles cases where the storage file is already deleted
+- Consider implementing soft deletes if you need recovery capability
+- For bulk deletions, consider implementing a dedicated bulk delete endpoint to reduce API calls
